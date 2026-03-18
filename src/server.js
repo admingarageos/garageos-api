@@ -28,8 +28,10 @@ const PORT = process.env.PORT || 3000
 ========================= */
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true
+  origin: [
+    'http://localhost:5173',
+    'https://strong-sunflower-ca407c.netlify.app'
+  ]
 }))
 
 app.use(express.json())
