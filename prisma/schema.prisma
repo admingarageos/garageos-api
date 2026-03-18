@@ -1,0 +1,182 @@
+enum RolTaller {
+  admin
+  mecanico
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoOrden {
+  pendiente
+  en_proceso
+  terminada
+  entregada
+  cancelada
+}
+
+model Taller {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  telefono  String?
+  direccion String?
+  logo      String?
+
+  createdAt DateTime @default(now())
+
+  clientes  Cliente[]
+  vehiculos Vehiculo[]
+  ordenes   OrdenServicio[]
+
+  usuarios  UserTaller[]
+  citas     Cita[]
+}
+
+model Cliente {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  telefono  String
+  email     String?
+
+  tallerId  Int
+  taller    Taller   @relation(fields: [tallerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehiculos Vehiculo[]
+  citas     Cita[]
+
+  @@index([tallerId])
+}
+
+model Vehiculo {
+  id       Int    @id @default(autoincrement())
+  marca    String
+  modelo   String
+  anio     Int
+  placas   String
+
+  clienteId Int
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  tallerId Int
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  ordenes OrdenServicio[]
+  citas     Cita[]
+
+  @@unique([placas, tallerId])
+  @@index([clienteId])
+}
+
+model OrdenServicio {
+  id          Int         @id @default(autoincrement())
+  descripcion String?
+  notasInternas String? 
+
+  fecha       DateTime    @default(now())
+  estado      EstadoOrden @default(pendiente)
+  total       Float       @default(0)
+
+  kilometraje Int?   
+
+  vehiculoId Int
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
+
+  tallerId Int
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  detalles OrdenServicioDetalle[]
+  cita     Cita?
+
+  @@index([vehiculoId])
+  @@index([tallerId])
+  @@index([estado])
+}
+
+model Servicio {
+  id     Int    @id @default(autoincrement())
+  nombre String
+  precio Float
+
+  detalles OrdenServicioDetalle[]
+}
+
+model OrdenServicioDetalle {
+  id Int @id @default(autoincrement())
+
+  ordenId    Int
+  servicioId Int
+  cantidad   Int   @default(1)
+  precio     Float
+
+  orden    OrdenServicio @relation(fields: [ordenId], references: [id])
+  servicio Servicio      @relation(fields: [servicioId], references: [id])
+
+  @@index([ordenId])
+  @@index([servicioId])  // 👈 agregar
+}
+
+model User {
+  id           Int    @id @default(autoincrement())
+  nombre       String
+  email        String @unique
+  passwordHash String
+
+  createdAt DateTime @default(now())
+
+  talleres UserTaller[]
+}
+
+model UserTaller {
+  id Int @id @default(autoincrement())
+
+  userId   Int
+  tallerId Int
+
+  rol RolTaller @default(mecanico)
+
+  user   User   @relation(fields: [userId], references: [id])
+  taller Taller @relation(fields: [tallerId], references: [id])
+
+  @@unique([userId, tallerId])
+  @@index([tallerId]) // 👈 agregar
+}
+
+enum EstadoCita {
+  pendiente
+  confirmada
+  cancelada
+  completada
+}
+
+model Cita {
+  id          Int        @id @default(autoincrement())
+  fecha       DateTime
+  descripcion String?
+  estado      EstadoCita @default(pendiente)
+
+  clienteId  Int
+  cliente    Cliente  @relation(fields: [clienteId], references: [id])
+
+  vehiculoId Int
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
+
+  tallerId Int
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  ordenId Int?           @unique
+  orden   OrdenServicio? @relation(fields: [ordenId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tallerId])
+  @@index([clienteId])
+  @@index([fecha])
+}

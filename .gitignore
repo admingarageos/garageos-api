@@ -1,0 +1,25 @@
+# Dependencias
+node_modules
+
+# Variables de entorno (NUNCA subir esto)
+.env
+.env.local
+.env.production
+
+# Prisma generados
+/src/generated/prisma
+prisma/generated
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
