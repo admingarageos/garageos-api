@@ -2,7 +2,15 @@ import prisma from "../lib/prisma.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 
-const JWT_SECRET = process.env.JWT_SECRET || "super_secret_dev_key"
+/* =========================
+   JWT_SECRET — falla en arranque si no está
+   (validación en server.js, pero doble protección aquí)
+========================= */
+
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) throw new Error("JWT_SECRET no definido")
+
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h"
 
 /* =========================
    LOGIN
@@ -15,27 +23,24 @@ export const login = async (email, password) => {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email: email.toLowerCase().trim() }
   })
 
-  if (!user) {
-    throw new Error("INVALID_CREDENTIALS")
-  }
+  // Siempre comparamos hash aunque el usuario no exista,
+  // para evitar timing attacks que revelen si el email existe.
+  const dummyHash = "$2b$10$invalidhashfortimingprotection00000000000000000000000000"
+  const hashToCompare = user?.passwordHash ?? dummyHash
 
-  if (!user.passwordHash) {
-    throw new Error("INVALID_CREDENTIALS")
-  }
+  const valid = await bcrypt.compare(password, hashToCompare)
 
-  const valid = await bcrypt.compare(password, user.passwordHash)
-
-  if (!valid) {
+  if (!user || !user.passwordHash || !valid) {
     throw new Error("INVALID_CREDENTIALS")
   }
 
   const token = jwt.sign(
     { id: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: "8h" }
+    { expiresIn: JWT_EXPIRES_IN }
   )
 
   return {
@@ -58,46 +63,56 @@ export const register = async ({ nombre, email, password, nombreTaller }) => {
     throw new Error("MISSING_FIELDS")
   }
 
-  // 🔍 Validar duplicado
+  // Validación mínima de contraseña
+  if (password.length < 8) {
+    throw new Error("PASSWORD_TOO_SHORT")
+  }
+
+  // Normalizar email
+  const emailNorm = email.toLowerCase().trim()
+
   const existing = await prisma.user.findUnique({
-    where: { email }
+    where: { email: emailNorm }
   })
 
   if (existing) {
     throw new Error("EMAIL_EXISTS")
   }
 
-  const hashed = await bcrypt.hash(password, 10)
+  const hashed = await bcrypt.hash(password, 12)
 
-  // 👤 Crear usuario
-  const user = await prisma.user.create({
-    data: {
-      nombre,
-      email,
-      passwordHash: hashed
-    }
-  })
+  // Crear usuario y taller en una transacción
+  const { user, taller } = await prisma.$transaction(async (tx) => {
 
-  // 🏢 Crear taller
-  const taller = await prisma.taller.create({
-    data: {
-      nombre: nombreTaller
-    }
-  })
+    const user = await tx.user.create({
+      data: {
+        nombre: nombre.trim(),
+        email: emailNorm,
+        passwordHash: hashed
+      }
+    })
 
-  // 🔗 Relación usuario-taller
-  await prisma.userTaller.create({
-    data: {
-      userId: user.id,
-      tallerId: taller.id,
-      rol: "admin"
-    }
+    const taller = await tx.taller.create({
+      data: {
+        nombre: nombreTaller.trim()
+      }
+    })
+
+    await tx.userTaller.create({
+      data: {
+        userId: user.id,
+        tallerId: taller.id,
+        rol: "admin"
+      }
+    })
+
+    return { user, taller }
   })
 
   const token = jwt.sign(
     { id: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: "8h" }
+    { expiresIn: JWT_EXPIRES_IN }
   )
 
   return {
@@ -152,14 +167,18 @@ export const getMe = async (userId) => {
   return user
 }
 
+/* =========================
+   CREAR TALLER
+========================= */
+
 export const crearTaller = async (userId, nombre) => {
 
-  if (!nombre) {
+  if (!nombre?.trim()) {
     throw new Error("MISSING_NAME")
   }
 
   const taller = await prisma.taller.create({
-    data: { nombre }
+    data: { nombre: nombre.trim() }
   })
 
   await prisma.userTaller.create({

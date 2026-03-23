@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken"
 import prisma from "../lib/prisma.js"
 
-const JWT_SECRET = process.env.JWT_SECRET || "super_secret_dev_key"
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) throw new Error("JWT_SECRET no definido")
 
 /* =============================
    REQUIRE AUTH
@@ -13,73 +14,68 @@ export const requireAuth = async (req, res, next) => {
 
     const authHeader = req.headers.authorization
 
-    if (!authHeader) {
-      return res.status(401).json({
-        error: "Token requerido"
-      })
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Token requerido" })
     }
 
     const token = authHeader.split(" ")[1]
 
     if (!token) {
-      return res.status(401).json({
-        error: "Token inválido"
-      })
+      return res.status(401).json({ error: "Token inválido" })
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET)
+    let decoded
+    try {
+      decoded = jwt.verify(token, JWT_SECRET)
+    } catch (err) {
+      // Diferenciar token expirado de token inválido
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).json({ error: "Token expirado" })
+      }
+      return res.status(401).json({ error: "Token inválido" })
+    }
 
     const user = await prisma.user.findUnique({
-  where: { id: decoded.id }
-})
+      where: { id: decoded.id },
+      select: { id: true, nombre: true, email: true }
+    })
 
     if (!user) {
-      return res.status(401).json({
-        error: "Usuario no encontrado"
+      return res.status(401).json({ error: "Usuario no encontrado" })
+    }
+
+    req.user = user
+
+    // Validar taller si viene el header
+    const tallerIdRaw = req.headers["x-taller-id"]
+    const tallerId = tallerIdRaw ? parseInt(tallerIdRaw) : null
+
+    if (tallerId && !isNaN(tallerId)) {
+
+      const relacion = await prisma.userTaller.findFirst({
+        where: {
+          userId: user.id,
+          tallerId
+        }
       })
+
+      if (!relacion) {
+        return res.status(403).json({ error: "No tienes acceso a este taller" })
+      }
+
+      req.taller = {
+        id: tallerId,
+        rol: relacion.rol
+      }
+
+      req.tallerId = tallerId
     }
-
-    req.user = {
-  id: user.id,
-  nombre: user.nombre,
-  email: user.email
-}
-
-    // 🔥 Obtener taller actual desde header
-const tallerId = parseInt(req.headers["x-taller-id"])
-
-// 🔥 SOLO validar taller si la ruta lo necesita
-if (tallerId) {
-
-  const relacion = await prisma.userTaller.findFirst({
-    where: {
-      userId: user.id,
-      tallerId
-    }
-  })
-
-  if (!relacion) {
-    return res.status(403).json({
-      error: "No tienes acceso a este taller"
-    })
-  }
-
-  req.taller = {
-    id: tallerId,
-    rol: relacion.rol
-  }
-
-  req.tallerId = tallerId
-}
 
     next()
 
   } catch (error) {
-
-    return res.status(401).json({
-      error: "Token inválido"
-    })
-
+    console.error("[requireAuth]", error)
+    return res.status(500).json({ error: "Error de autenticación" })
   }
 
 }

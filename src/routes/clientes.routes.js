@@ -3,42 +3,53 @@ import prisma from "../lib/prisma.js"
 
 const router = Router()
 
+/* =========================
+   OBTENER CLIENTES
+   Filtrado por taller del usuario
+========================= */
 
-// OBTENER CLIENTES
 router.get("/", async (req, res) => {
-
   try {
 
     const clientes = await prisma.cliente.findMany({
-  where: {
-    tallerId: req.tallerId
-  },
-  include: {
-    vehiculos: true
-  }
-})
+      where: {
+        tallerId: req.tallerId
+      },
+      include: {
+        vehiculos: true
+      },
+      orderBy: {
+        nombre: "asc"
+      }
+    })
 
     res.json(clientes)
 
   } catch (error) {
-
-    console.error(error)
+    console.error("[GET /clientes]", error)
     res.status(500).json({ error: "Error obteniendo clientes" })
-
   }
-
 })
 
+/* =========================
+   CLIENTE POR ID
+   Verifica que pertenezca al taller
+========================= */
 
-// CLIENTE POR ID
 router.get("/:id", async (req, res) => {
-
   try {
 
     const id = parseInt(req.params.id)
 
-    const cliente = await prisma.cliente.findUnique({
-      where: { id },
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "ID inválido" })
+    }
+
+    const cliente = await prisma.cliente.findFirst({
+      where: {
+        id,
+        tallerId: req.tallerId
+      },
       include: {
         vehiculos: true
       }
@@ -51,96 +62,115 @@ router.get("/:id", async (req, res) => {
     res.json(cliente)
 
   } catch (error) {
-
-    console.error(error)
+    console.error("[GET /clientes/:id]", error)
     res.status(500).json({ error: "Error obteniendo cliente" })
-
   }
-
 })
 
+/* =========================
+   CREAR CLIENTE
+========================= */
 
-// CREAR CLIENTE
 router.post("/", async (req, res) => {
-
   try {
 
     const { nombre, telefono, email } = req.body
 
-    const tallerId = req.tallerId || 1
+    if (!nombre?.trim() || !telefono?.trim()) {
+      return res.status(400).json({ error: "Nombre y teléfono son requeridos" })
+    }
 
     const cliente = await prisma.cliente.create({
       data: {
-        nombre,
-        telefono,
-        email,
-        tallerId
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+        email: email?.trim() || null,
+        tallerId: req.tallerId
       }
     })
 
-    res.json(cliente)
+    res.status(201).json(cliente)
 
   } catch (error) {
-
-    console.error(error)
+    console.error("[POST /clientes]", error)
     res.status(500).json({ error: "Error creando cliente" })
-
   }
-
 })
 
+/* =========================
+   ACTUALIZAR CLIENTE
+   Verifica que pertenezca al taller antes de modificar
+========================= */
 
-// ACTUALIZAR CLIENTE
 router.put("/:id", async (req, res) => {
-
   try {
 
     const id = parseInt(req.params.id)
+
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "ID inválido" })
+    }
+
+    // Verificar que el cliente pertenece a este taller
+    const existing = await prisma.cliente.findFirst({
+      where: { id, tallerId: req.tallerId }
+    })
+
+    if (!existing) {
+      return res.status(404).json({ error: "Cliente no encontrado" })
+    }
+
     const { nombre, telefono, email } = req.body
-    const tallerId = req.tallerId
 
     const cliente = await prisma.cliente.update({
       where: { id },
       data: {
-        nombre,
-        telefono,
-        email,
-        tallerId
+        nombre: nombre?.trim(),
+        telefono: telefono?.trim(),
+        email: email?.trim() || null
       }
     })
 
     res.json(cliente)
 
   } catch (error) {
-
-    console.error(error)
+    console.error("[PUT /clientes/:id]", error)
     res.status(500).json({ error: "Error actualizando cliente" })
-
   }
-
 })
 
+/* =========================
+   ELIMINAR CLIENTE
+   Verifica que pertenezca al taller antes de borrar
+========================= */
 
-// ELIMINAR CLIENTE
 router.delete("/:id", async (req, res) => {
-
   try {
 
     const id = parseInt(req.params.id)
 
-    await prisma.cliente.delete({
-      where: { id }
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "ID inválido" })
+    }
+
+    // deleteMany con tallerId evita borrar registros de otro taller
+    const result = await prisma.cliente.deleteMany({
+      where: {
+        id,
+        tallerId: req.tallerId
+      }
     })
 
-    res.json({ message: "Cliente eliminado" })
+    if (result.count === 0) {
+      return res.status(404).json({ error: "Cliente no encontrado" })
+    }
+
+    res.json({ mensaje: "Cliente eliminado" })
 
   } catch (error) {
-
-    console.error(error)
+    console.error("[DELETE /clientes/:id]", error)
     res.status(500).json({ error: "Error eliminando cliente" })
-
   }
-
 })
 
 export default router

@@ -3,12 +3,18 @@ import prisma from "../lib/prisma.js"
 
 const router = Router()
 
+/* =========================
+   IMPORTANTE: Las rutas con segmentos fijos
+   (/buscar, /buscar-parcial, /buscar-global)
+   DEBEN ir ANTES de /:id para que Express no las
+   interprete como parámetros.
+========================= */
 
-// =========================
-// AUTOCOMPLETE PLACAS
-// =========================
+/* =========================
+   AUTOCOMPLETE PLACAS
+========================= */
+
 router.get("/buscar-parcial", async (req, res) => {
-
   try {
 
     const placas = req.query.placas || ""
@@ -18,224 +24,92 @@ router.get("/buscar-parcial", async (req, res) => {
     }
 
     const vehiculos = await prisma.vehiculo.findMany({
-
       where: {
-        placas: {
-          contains: placas,
-          mode: "insensitive"
-        },
+        placas: { contains: placas, mode: "insensitive" },
         tallerId: req.tallerId
       },
-
-      include: {
-        cliente: true
-      },
-
+      include: { cliente: true },
       take: 5
-
     })
 
-    return res.json(vehiculos)
+    res.json(vehiculos)
 
   } catch (error) {
-
-    console.error("buscar-parcial error:", error)
-
-    return res.json([])
-
+    console.error("[GET /vehiculos/buscar-parcial]", error)
+    res.json([])
   }
-
 })
 
+/* =========================
+   BUSCAR VEHICULO EXACTO
+========================= */
 
-// =========================
-// BUSCAR VEHICULO EXACTO
-// =========================
 router.get("/buscar", async (req, res) => {
-
   try {
 
     const placas = req.query.placas
 
-    if (!placas) {
-      return res.json(null)
-    }
+    if (!placas) return res.json(null)
 
     const vehiculo = await prisma.vehiculo.findFirst({
-
       where: {
-        placas: {
-          contains: placas,
-          mode: "insensitive"
-        },
+        placas: { contains: placas, mode: "insensitive" },
         tallerId: req.tallerId
       },
-
       include: {
-
         cliente: true,
-
         ordenes: {
-          orderBy: {
-            fecha: "desc"
-          },
+          orderBy: { fecha: "desc" },
           take: 1
         }
-
       }
-
-    })
-
-    return res.json(vehiculo)
-
-  } catch (error) {
-
-    console.error("buscar error:", error)
-
-    return res.json(null)
-
-  }
-
-})
-
-
-// =========================
-// CREAR VEHICULO
-// =========================
-router.post("/", async (req, res) => {
-
-  try {
-
-    const { marca, modelo, anio, placas, clienteId } = req.body
-
-    const vehiculo = await prisma.vehiculo.create({
-
-      data: {
-        marca,
-        modelo,
-        anio,
-        placas,
-        clienteId,
-        tallerId: req.tallerId
-      }
-
     })
 
     res.json(vehiculo)
 
   } catch (error) {
-
-    console.error(error)
-
-    res.status(500).json({
-      error: "Error creando vehículo"
-    })
-
+    console.error("[GET /vehiculos/buscar]", error)
+    res.json(null)
   }
-
 })
 
+/* =========================
+   BÚSQUEDA GLOBAL
+========================= */
 
-// =========================
-// HISTORIAL VEHICULO
-// =========================
-router.get("/:id/historial", async (req, res) => {
-
+router.get("/buscar-global", async (req, res) => {
   try {
 
-    const id = parseInt(req.params.id)
+    const q = req.query.q || ""
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "ID inválido" })
-    }
+    if (q.length < 2) return res.json([])
 
-    const vehiculo = await prisma.vehiculo.findUnique({
-
-      where: { id },
-
-      include: {
-
-        cliente: true,
-
-        ordenes: {
-
-          include: {
-
-            detalles: {
-              include: {
-                servicio: true
-              }
-            }
-
-          },
-
-          orderBy: {
-            fecha: "desc"
-          }
-
-        }
-
-      }
-
-    })
-
-    if (!vehiculo) {
-      return res.status(404).json({ error: "Vehículo no encontrado" })
-    }
-
-
-    const ordenes = vehiculo.ordenes.map((orden) => {
-
-      let total = 0
-
-      orden.detalles.forEach(det => {
-        total += det.precio * det.cantidad
-      })
-
-      return {
-        id: orden.id,
-        fecha: orden.fecha,
-        estado: orden.estado,
-        total,
-        detalles: orden.detalles
-      }
-
-    })
-
-
-    res.json({
-
-      vehiculo: {
-        id: vehiculo.id,
-        marca: vehiculo.marca,
-        modelo: vehiculo.modelo,
-        placas: vehiculo.placas
+    const vehiculos = await prisma.vehiculo.findMany({
+      where: {
+        tallerId: req.tallerId,
+        OR: [
+          { placas: { contains: q, mode: "insensitive" } },
+          { cliente: { nombre: { contains: q, mode: "insensitive" } } },
+          { cliente: { telefono: { contains: q } } }
+        ]
       },
-
-      cliente: vehiculo.cliente,
-
-      ordenes
-
+      include: { cliente: true },
+      take: 10
     })
+
+    res.json(vehiculos)
 
   } catch (error) {
-
-    console.error(error)
-
-    res.status(500).json({
-      error: "Error obteniendo historial"
-    })
-
+    console.error("[GET /vehiculos/buscar-global]", error)
+    res.status(500).json({ error: "Error en búsqueda" })
   }
-
 })
 
+/* =========================
+   VEHICULOS POR CLIENTE
+========================= */
 
-// =========================
-// VEHICULOS POR CLIENTE
-// =========================
 router.get("/cliente/:clienteId", async (req, res) => {
-
   try {
 
     const clienteId = parseInt(req.params.clienteId)
@@ -245,138 +119,136 @@ router.get("/cliente/:clienteId", async (req, res) => {
     }
 
     const vehiculos = await prisma.vehiculo.findMany({
-
       where: {
         clienteId,
         tallerId: req.tallerId
       },
-
-      orderBy: {
-        id: "desc"
-      }
-
+      orderBy: { id: "desc" }
     })
 
     res.json(vehiculos)
 
   } catch (error) {
-
-    console.error(error)
-
-    res.status(500).json({
-      error: "Error obteniendo vehículos del cliente"
-    })
-
+    console.error("[GET /vehiculos/cliente/:clienteId]", error)
+    res.status(500).json({ error: "Error obteniendo vehículos del cliente" })
   }
-
 })
 
+/* =========================
+   TODOS LOS VEHICULOS
+========================= */
 
-// =========================
-// TODOS LOS VEHICULOS
-// =========================
 router.get("/", async (req, res) => {
-
   try {
 
     const vehiculos = await prisma.vehiculo.findMany({
-
-      where: {
-        tallerId: req.tallerId
-      },
-
-      include: {
-        cliente: true
-      },
-
-      orderBy: {
-        id: "desc"
-      }
-
+      where: { tallerId: req.tallerId },
+      include: { cliente: true },
+      orderBy: { id: "desc" }
     })
 
     res.json(vehiculos)
 
   } catch (error) {
-
-    console.error(error)
-
-    res.status(500).json({
-      error: "Error obteniendo vehículos"
-    })
-
+    console.error("[GET /vehiculos]", error)
+    res.status(500).json({ error: "Error obteniendo vehículos" })
   }
-
 })
 
-router.get("/buscar-global", buscarGlobal)
+/* =========================
+   CREAR VEHICULO
+========================= */
 
-async function buscarGlobal(req, res) {
-
+router.post("/", async (req, res) => {
   try {
 
-    const q = req.query.q || ""
+    const { marca, modelo, anio, placas, clienteId } = req.body
 
-    if (q.length < 2) {
-      return res.json([])
+    if (!marca || !modelo || !anio || !placas || !clienteId) {
+      return res.status(400).json({ error: "Todos los campos son requeridos" })
     }
 
-    const vehiculos = await prisma.vehiculo.findMany({
-
-      where: {
-
-        tallerId: req.tallerId,
-
-        OR: [
-
-          {
-            placas: {
-              contains: q,
-              mode: "insensitive"
-            }
-          },
-
-          {
-            cliente: {
-              nombre: {
-                contains: q,
-                mode: "insensitive"
-              }
-            }
-          },
-
-          {
-            cliente: {
-              telefono: {
-                contains: q
-              }
-            }
-          }
-
-        ]
-
-      },
-
-      include: {
-        cliente: true
-      },
-
-      take: 10
-
+    const vehiculo = await prisma.vehiculo.create({
+      data: {
+        marca: marca.trim(),
+        modelo: modelo.trim(),
+        anio: parseInt(anio),
+        placas: placas.trim().toUpperCase(),
+        clienteId,
+        tallerId: req.tallerId
+      }
     })
 
-    res.json(vehiculos)
+    res.status(201).json(vehiculo)
 
   } catch (error) {
+    console.error("[POST /vehiculos]", error)
+    res.status(500).json({ error: "Error creando vehículo" })
+  }
+})
 
-    console.error("buscar-global error:", error)
+/* =========================
+   HISTORIAL VEHICULO
+   Verifica que el vehículo pertenezca al taller
+========================= */
 
-    res.status(500).json({
-      error: "Error en búsqueda"
+router.get("/:id/historial", async (req, res) => {
+  try {
+
+    const id = parseInt(req.params.id)
+
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "ID inválido" })
+    }
+
+    const vehiculo = await prisma.vehiculo.findFirst({
+      where: {
+        id,
+        tallerId: req.tallerId
+      },
+      include: {
+        cliente: true,
+        ordenes: {
+          include: {
+            detalles: {
+              include: { servicio: true }
+            }
+          },
+          orderBy: { fecha: "desc" }
+        }
+      }
     })
 
-  }
+    if (!vehiculo) {
+      return res.status(404).json({ error: "Vehículo no encontrado" })
+    }
 
-}
+    const ordenes = vehiculo.ordenes.map((orden) => {
+      const total = orden.detalles.reduce((sum, det) => sum + det.precio * det.cantidad, 0)
+      return {
+        id: orden.id,
+        fecha: orden.fecha,
+        estado: orden.estado,
+        total,
+        detalles: orden.detalles
+      }
+    })
+
+    res.json({
+      vehiculo: {
+        id: vehiculo.id,
+        marca: vehiculo.marca,
+        modelo: vehiculo.modelo,
+        placas: vehiculo.placas
+      },
+      cliente: vehiculo.cliente,
+      ordenes
+    })
+
+  } catch (error) {
+    console.error("[GET /vehiculos/:id/historial]", error)
+    res.status(500).json({ error: "Error obteniendo historial" })
+  }
+})
 
 export default router
