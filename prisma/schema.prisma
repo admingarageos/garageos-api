@@ -20,6 +20,12 @@ enum EstadoOrden {
   cancelada
 }
 
+enum MetodoPago {
+  efectivo
+  tarjeta
+  transferencia
+}
+
 model Taller {
   id        Int      @id @default(autoincrement())
   nombre    String
@@ -69,22 +75,25 @@ model Vehiculo {
   taller   Taller @relation(fields: [tallerId], references: [id])
 
   ordenes OrdenServicio[]
-  citas     Cita[]
+  citas   Cita[]
 
   @@unique([placas, tallerId])
   @@index([clienteId])
 }
 
 model OrdenServicio {
-  id          Int         @id @default(autoincrement())
-  descripcion String?
-  notasInternas String? 
+  id            Int         @id @default(autoincrement())
+  descripcion   String?
+  notasInternas String?
 
-  fecha       DateTime    @default(now())
-  estado      EstadoOrden @default(pendiente)
-  total       Float       @default(0)
+  fecha         DateTime    @default(now())
+  estado        EstadoOrden @default(pendiente)
+  total         Float       @default(0)
 
-  kilometraje Int?   
+  kilometraje   Int?
+
+  // Método de pago — se registra al cobrar (terminada/entregada)
+  metodoPago    MetodoPago?
 
   vehiculoId Int
   vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
@@ -98,6 +107,7 @@ model OrdenServicio {
   @@index([vehiculoId])
   @@index([tallerId])
   @@index([estado])
+  @@index([metodoPago])
 }
 
 model Servicio {
@@ -120,7 +130,7 @@ model OrdenServicioDetalle {
   servicio Servicio      @relation(fields: [servicioId], references: [id])
 
   @@index([ordenId])
-  @@index([servicioId])  // 👈 agregar
+  @@index([servicioId])
 }
 
 model User {
@@ -146,7 +156,7 @@ model UserTaller {
   taller Taller @relation(fields: [tallerId], references: [id])
 
   @@unique([userId, tallerId])
-  @@index([tallerId]) // 👈 agregar
+  @@index([tallerId])
 }
 
 enum EstadoCita {
