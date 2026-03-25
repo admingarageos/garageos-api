@@ -117,10 +117,20 @@ app.use("/api/ordenes",   requireAuth, tallerMiddleware, ordenesRoutes)
 app.use("/api/citas",     requireAuth, tallerMiddleware, citasRoutes)
 
 /* =========================
+   RUTAS PROTEGIDAS (auth + taller) — todos los roles
+   ✅ FIX: servicios ya NO bloquea aquí con requireRol("admin").
+   El control de quién puede escribir/eliminar se hace
+   dentro de servicios.routes.js ruta por ruta.
+   Así los mecánicos pueden hacer GET /api/servicios
+   para ver el catálogo al agregar servicios a una orden.
+========================= */
+
+app.use("/api/servicios", requireAuth, tallerMiddleware, serviciosRoutes)
+
+/* =========================
    RUTAS PROTEGIDAS (auth + taller) — solo admin
 ========================= */
 
-app.use("/api/servicios", requireAuth, tallerMiddleware, requireRol("admin"), serviciosRoutes)
 app.use("/api/dashboard", requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
 
 /* =========================
