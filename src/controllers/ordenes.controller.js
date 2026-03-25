@@ -8,6 +8,11 @@ const ESTADOS_ORDEN = [
   "cancelada"
 ]
 
+// Estados que requieren (o permiten) registrar método de pago
+const ESTADOS_CON_PAGO = ["terminada", "entregada"]
+
+const METODOS_PAGO_VALIDOS = ["efectivo", "tarjeta", "transferencia"]
+
 /* =================================
    HELPER: VALIDAR TALLER
 ================================= */
@@ -30,7 +35,6 @@ export const getOrdenes = async (req, res) => {
 
   try {
 
-    // 🔥 YA NO ROMPE EL FLUJO (solo corta limpio)
     if (!requireTaller(req, res)) return
 
     const limit = req.query.limit
@@ -169,12 +173,33 @@ export const cambiarEstadoOrden = async (req, res) => {
     if (!requireTaller(req, res)) return
 
     const id = parseInt(req.params.id)
-    const { estado } = req.body
+
+    // ✅ FIX: leer metodoPago además de estado
+    const { estado, metodoPago } = req.body
 
     if (!ESTADOS_ORDEN.includes(estado)) {
       return res.status(400).json({
         error: "Estado inválido"
       })
+    }
+
+    // ✅ FIX: validar que el método de pago sea uno de los permitidos (si viene)
+    if (metodoPago && !METODOS_PAGO_VALIDOS.includes(metodoPago)) {
+      return res.status(400).json({
+        error: "Método de pago inválido"
+      })
+    }
+
+    // ✅ FIX: construir el objeto data incluyendo metodoPago cuando corresponde.
+    //    - Si el estado lleva pago (terminada/entregada) y viene metodoPago → guardarlo.
+    //    - Si se cambia a otro estado (ej. se regresa a en_proceso) → limpiar el método de pago.
+    const data = { estado }
+
+    if (ESTADOS_CON_PAGO.includes(estado) && metodoPago) {
+      data.metodoPago = metodoPago
+    } else if (!ESTADOS_CON_PAGO.includes(estado)) {
+      // Si vuelve a un estado sin cobro, limpiamos el método de pago
+      data.metodoPago = null
     }
 
     const result = await prisma.ordenServicio.updateMany({
@@ -184,9 +209,7 @@ export const cambiarEstadoOrden = async (req, res) => {
         tallerId: req.tallerId
       },
 
-      data: {
-        estado
-      }
+      data
 
     })
 
