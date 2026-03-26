@@ -54,6 +54,13 @@ export const login = async (email, password) => {
 }
 
 /* =========================
+   HELPER: FECHA DE VENCIMIENTO
+   30 días desde hoy
+========================= */
+
+const trialVence = () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+/* =========================
    REGISTER
 ========================= */
 
@@ -102,7 +109,9 @@ export const register = async ({ nombre, email, password, nombreTaller }) => {
 
     const taller = await tx.taller.create({
       data: {
-        nombre: nombreTaller.trim()
+        nombre:        nombreTaller.trim(),
+        licenciaVence: trialVence(),
+        planTipo:      "trial"
       }
     })
 
@@ -142,16 +151,25 @@ export const getUserTalleres = async (userId) => {
   if (!userId) return []
 
   const talleres = await prisma.userTaller.findMany({
-    where: { userId },
+    where:   { userId },
     include: {
-      taller: true
+      taller: {
+        select: {
+          id:            true,
+          nombre:        true,
+          licenciaVence: true,
+          planTipo:      true
+        }
+      }
     }
   })
 
   return talleres.map(t => ({
-    id: t.taller.id,
-    nombre: t.taller.nombre,
-    rol: t.rol
+    id:            t.taller.id,
+    nombre:        t.taller.nombre,
+    rol:           t.rol,
+    licenciaVence: t.taller.licenciaVence,
+    planTipo:      t.taller.planTipo
   }))
 }
 
@@ -204,7 +222,11 @@ export const crearTaller = async (userId, nombre) => {
   }
 
   const taller = await prisma.taller.create({
-    data: { nombre: nombre.trim() }
+    data: {
+      nombre:        nombre.trim(),
+      licenciaVence: trialVence(),
+      planTipo:      "trial"
+    }
   })
 
   await prisma.userTaller.create({

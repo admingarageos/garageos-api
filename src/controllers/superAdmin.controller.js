@@ -192,7 +192,11 @@ export const crearUsuario = async (req, res) => {
 
       if (nombreTaller?.trim()) {
         const taller = await tx.taller.create({
-          data: { nombre: nombreTaller.trim() }
+          data: {
+            nombre:        nombreTaller.trim(),
+            licenciaVence: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            planTipo:      "trial"
+          }
         })
         await tx.userTaller.create({
           data: { userId: user.id, tallerId: taller.id, rol: "admin" }
@@ -211,6 +215,245 @@ export const crearUsuario = async (req, res) => {
   } catch (error) {
     console.error("[superAdmin.crearUsuario]", error)
     res.status(500).json({ error: "Error creando usuario" })
+  }
+}
+
+/* =================================
+   USUARIOS DE UN TALLER
+================================= */
+
+export const getUsuariosTaller = async (req, res) => {
+  try {
+
+    const tallerId = parseInt(req.params.id)
+    if (isNaN(tallerId)) return res.status(400).json({ error: "ID inválido" })
+
+    const relaciones = await prisma.userTaller.findMany({
+      where:   { tallerId },
+      include: {
+        user: {
+          select: { id: true, nombre: true, email: true, createdAt: true }
+        }
+      },
+      orderBy: { user: { nombre: "asc" } }
+    })
+
+    res.json(relaciones.map(r => ({
+      userId:  r.user.id,
+      nombre:  r.user.nombre,
+      email:   r.user.email,
+      rol:     r.rol,
+      createdAt: r.user.createdAt
+    })))
+
+  } catch (error) {
+    console.error("[superAdmin.getUsuariosTaller]", error)
+    res.status(500).json({ error: "Error obteniendo usuarios del taller" })
+  }
+}
+
+export const asignarUsuarioATaller = async (req, res) => {
+  try {
+
+    const tallerId = parseInt(req.params.id)
+    if (isNaN(tallerId)) return res.status(400).json({ error: "ID inválido" })
+
+    const { userId, rol } = req.body
+
+    if (!userId || !["admin", "mecanico"].includes(rol)) {
+      return res.status(400).json({ error: "userId y rol (admin|mecanico) son requeridos" })
+    }
+
+    const taller = await prisma.taller.findUnique({ where: { id: tallerId } })
+    if (!taller) return res.status(404).json({ error: "Taller no encontrado" })
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" })
+
+    await prisma.userTaller.upsert({
+      where:  { userId_tallerId: { userId, tallerId } },
+      update: { rol },
+      create: { userId, tallerId, rol }
+    })
+
+    res.json({ ok: true })
+
+  } catch (error) {
+    console.error("[superAdmin.asignarUsuarioATaller]", error)
+    res.status(500).json({ error: "Error asignando usuario al taller" })
+  }
+}
+
+export const quitarUsuarioDeTaller = async (req, res) => {
+  try {
+
+    const tallerId = parseInt(req.params.id)
+    const userId   = parseInt(req.params.userId)
+
+    if (isNaN(tallerId) || isNaN(userId)) {
+      return res.status(400).json({ error: "IDs inválidos" })
+    }
+
+    const deleted = await prisma.userTaller.deleteMany({
+      where: { userId, tallerId }
+    })
+
+    if (deleted.count === 0) {
+      return res.status(404).json({ error: "Relación no encontrada" })
+    }
+
+    res.json({ ok: true })
+
+  } catch (error) {
+    console.error("[superAdmin.quitarUsuarioDeTaller]", error)
+    res.status(500).json({ error: "Error quitando usuario del taller" })
+  }
+}
+
+/* =================================
+   TALLERES DE UN USUARIO
+================================= */
+
+export const getTalleresUsuario = async (req, res) => {
+  try {
+
+    const userId = parseInt(req.params.id)
+    if (isNaN(userId)) return res.status(400).json({ error: "ID inválido" })
+
+    const relaciones = await prisma.userTaller.findMany({
+      where:   { userId },
+      include: {
+        taller: {
+          select: {
+            id:            true,
+            nombre:        true,
+            suspendido:    true,
+            licenciaVence: true,
+            planTipo:      true
+          }
+        }
+      },
+      orderBy: { taller: { nombre: "asc" } }
+    })
+
+    res.json(relaciones.map(r => ({
+      tallerId:      r.taller.id,
+      nombre:        r.taller.nombre,
+      suspendido:    r.taller.suspendido,
+      licenciaVence: r.taller.licenciaVence,
+      planTipo:      r.taller.planTipo,
+      rol:           r.rol
+    })))
+
+  } catch (error) {
+    console.error("[superAdmin.getTalleresUsuario]", error)
+    res.status(500).json({ error: "Error obteniendo talleres del usuario" })
+  }
+}
+
+/* =================================
+   EXTENDER LICENCIA DE UN TALLER
+================================= */
+
+export const extenderLicencia = async (req, res) => {
+  try {
+
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: "ID inválido" })
+
+    const { dias, planTipo } = req.body
+
+    if (!dias || isNaN(parseInt(dias)) || parseInt(dias) <= 0) {
+      return res.status(400).json({ error: "dias debe ser un número positivo" })
+    }
+
+    const taller = await prisma.taller.findUnique({
+      where:  { id },
+      select: { id: true, licenciaVence: true }
+    })
+
+    if (!taller) return res.status(404).json({ error: "Taller no encontrado" })
+
+    // Base de cálculo: si ya venció o es null, partir desde hoy; si no, extender desde la fecha actual
+    const base = taller.licenciaVence && new Date(taller.licenciaVence) > new Date()
+      ? new Date(taller.licenciaVence)
+      : new Date()
+
+    const nuevaFecha = new Date(base.getTime() + parseInt(dias) * 24 * 60 * 60 * 1000)
+
+    const actualizado = await prisma.taller.update({
+      where: { id },
+      data:  {
+        licenciaVence: nuevaFecha,
+        ...(planTipo && { planTipo })
+      },
+      select: { id: true, licenciaVence: true, planTipo: true }
+    })
+
+    res.json(actualizado)
+
+  } catch (error) {
+    console.error("[superAdmin.extenderLicencia]", error)
+    res.status(500).json({ error: "Error extendiendo licencia" })
+  }
+}
+
+/* =================================
+   TODOS LOS TALLERES CON LICENCIA
+   Para el tab Licencias del superAdmin
+================================= */
+
+export const getLicencias = async (req, res) => {
+  try {
+
+    const talleres = await prisma.taller.findMany({
+      orderBy: { licenciaVence: "asc" },
+      select: {
+        id:            true,
+        nombre:        true,
+        suspendido:    true,
+        licenciaVence: true,
+        planTipo:      true,
+        _count: {
+          select: { usuarios: true, ordenes: true }
+        }
+      }
+    })
+
+    res.json(talleres)
+
+  } catch (error) {
+    console.error("[superAdmin.getLicencias]", error)
+    res.status(500).json({ error: "Error obteniendo licencias" })
+  }
+}
+
+/* =================================
+   BUSCAR USUARIO POR EMAIL
+   Para el panel de asignación
+================================= */
+
+export const buscarUsuario = async (req, res) => {
+  try {
+
+    const { email } = req.query
+    if (!email || email.trim().length < 3) {
+      return res.json([])
+    }
+
+    const usuarios = await prisma.user.findMany({
+      where: {
+        email: { contains: email.trim(), mode: "insensitive" }
+      },
+      select: { id: true, nombre: true, email: true },
+      take: 5
+    })
+
+    res.json(usuarios)
+
+  } catch (error) {
+    console.error("[superAdmin.buscarUsuario]", error)
+    res.status(500).json({ error: "Error buscando usuario" })
   }
 }
 

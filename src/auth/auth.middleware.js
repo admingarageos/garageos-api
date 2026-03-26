@@ -52,7 +52,7 @@ export const requireAuth = async (req, res, next) => {
 
     if (tallerId && !isNaN(tallerId)) {
 
-      // SuperAdmin tiene acceso a cualquier taller sin validar UserTaller
+      // SuperAdmin tiene acceso a cualquier taller sin validar UserTaller ni licencia
       if (user.superAdmin) {
 
         req.taller   = { id: tallerId, rol: "admin" }
@@ -62,7 +62,14 @@ export const requireAuth = async (req, res, next) => {
 
         const relacion = await prisma.userTaller.findFirst({
           where:   { userId: user.id, tallerId },
-          include: { taller: { select: { suspendido: true } } }
+          include: {
+            taller: {
+              select: {
+                suspendido:    true,
+                licenciaVence: true
+              }
+            }
+          }
         })
 
         if (!relacion) {
@@ -71,6 +78,14 @@ export const requireAuth = async (req, res, next) => {
 
         if (relacion.taller.suspendido) {
           return res.status(403).json({ error: "Este taller está suspendido" })
+        }
+
+        // Verificar licencia — null significa sin límite (talleres legacy)
+        if (
+          relacion.taller.licenciaVence !== null &&
+          new Date(relacion.taller.licenciaVence) < new Date()
+        ) {
+          return res.status(402).json({ error: "licencia_expirada" })
         }
 
         req.taller   = { id: tallerId, rol: relacion.rol }

@@ -1,0 +1,3 @@
+ALTER TABLE "Taller"
+  ADD COLUMN IF NOT EXISTS "licenciaVence" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "planTipo"      TEXT DEFAULT 'trial';

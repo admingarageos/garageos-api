@@ -34,6 +34,10 @@ model Taller {
   logo       String?
   suspendido Boolean  @default(false)
 
+  // Licenciamiento
+  licenciaVence DateTime?
+  planTipo      String?   @default("trial")  // "trial" | "basico" | "estandar" | "pro" | "manual"
+
   createdAt DateTime @default(now())
 
   clientes          Cliente[]
