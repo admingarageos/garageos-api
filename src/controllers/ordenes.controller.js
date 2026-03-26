@@ -159,15 +159,14 @@ export const cambiarEstadoOrden = async (req, res) => {
 
     const data = { estado }
 
-    // ✅ Método de pago
+    // Método de pago
     if (ESTADOS_CON_PAGO.includes(estado) && metodoPago) {
       data.metodoPago = metodoPago
     } else if (!ESTADOS_CON_PAGO.includes(estado)) {
       data.metodoPago = null
     }
 
-    // ✅ Fecha de entrega — se registra automáticamente al entregar,
-    //    se limpia si la orden regresa a cualquier otro estado
+    // ✅ Fecha de entrega — se registra al entregar, se limpia en cualquier otro estado
     if (estado === "entregada") {
       data.fechaEntrega = new Date()
     } else {
