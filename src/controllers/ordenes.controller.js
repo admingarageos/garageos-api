@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js"
+import { sendPush } from "../services/push.service.js"
 
 const ESTADOS_ORDEN = [
   "pendiente",
@@ -182,6 +183,15 @@ export const cambiarEstadoOrden = async (req, res) => {
       return res.status(404).json({ error: "Orden no encontrada" })
     }
 
+    // Notificar cuando la orden queda terminada
+    if (estado === "terminada") {
+      sendPush(req.tallerId, {
+        title: "Orden lista",
+        body:  `La orden #${id} está terminada y lista para entregar`,
+        url:   `/orden/${id}`
+      }, req.user.id)
+    }
+
     res.json({ mensaje: "Estado actualizado correctamente" })
 
   } catch (error) {
@@ -310,6 +320,13 @@ export const agregarComentario = async (req, res) => {
       data:    { texto: texto.trim(), ordenId, userId: req.user.id },
       include: { user: { select: { id: true, nombre: true } } }
     })
+
+    // Notificar a los otros usuarios del taller
+    sendPush(req.tallerId, {
+      title: `Comentario en orden #${ordenId}`,
+      body:  `${comentario.user.nombre}: ${texto.trim().substring(0, 80)}`,
+      url:   `/orden/${ordenId}`
+    }, req.user.id)
 
     res.status(201).json(comentario)
 

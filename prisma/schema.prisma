@@ -36,12 +36,12 @@ model Taller {
 
   createdAt DateTime @default(now())
 
-  clientes  Cliente[]
-  vehiculos Vehiculo[]
-  ordenes   OrdenServicio[]
-
-  usuarios  UserTaller[]
-  citas     Cita[]
+  clientes          Cliente[]
+  vehiculos         Vehiculo[]
+  ordenes           OrdenServicio[]
+  usuarios          UserTaller[]
+  citas             Cita[]
+  pushSubscriptions PushSubscription[]
 }
 
 model PlatformConfig {
@@ -162,8 +162,9 @@ model User {
 
   createdAt DateTime @default(now())
 
-  talleres    UserTaller[]
-  comentarios OrdenComentario[]
+  talleres          UserTaller[]
+  comentarios       OrdenComentario[]
+  pushSubscriptions PushSubscription[]
 }
 
 model OrdenComentario {
@@ -225,4 +226,20 @@ model Cita {
   @@index([tallerId])
   @@index([clienteId])
   @@index([fecha])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String
+  p256dh    String
+  auth      String
+  userId    Int
+  tallerId  Int
+  user      User     @relation(fields: [userId],   references: [id], onDelete: Cascade)
+  taller    Taller   @relation(fields: [tallerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([endpoint, tallerId])
+  @@index([tallerId])
+  @@index([userId])
 }

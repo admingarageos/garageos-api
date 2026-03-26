@@ -31,6 +31,7 @@ import vehiculosRoutes from "./routes/vehiculos.routes.js"
 import serviciosRoutes from "./routes/servicios.routes.js"
 import tallerRoutes from "./routes/taller.routes.js"
 import citasRoutes from "./routes/citas.routes.js"
+import pushRoutes from "./routes/push.routes.js"
 import superAdminRoutes from "./routes/superAdmin.routes.js"
 
 import { requireAuth } from "./auth/auth.middleware.js"
@@ -117,6 +118,7 @@ app.use("/api/clientes",  requireAuth, tallerMiddleware, clientesRoutes)
 app.use("/api/vehiculos", requireAuth, tallerMiddleware, vehiculosRoutes)
 app.use("/api/ordenes",   requireAuth, tallerMiddleware, ordenesRoutes)
 app.use("/api/citas",     requireAuth, tallerMiddleware, citasRoutes)
+app.use("/api/push",     requireAuth, tallerMiddleware, pushRoutes)
 
 /* =========================
    RUTAS PROTEGIDAS (auth + taller) — todos los roles
