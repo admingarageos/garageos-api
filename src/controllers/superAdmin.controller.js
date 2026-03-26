@@ -363,8 +363,8 @@ export const extenderLicencia = async (req, res) => {
 
     const { dias, planTipo } = req.body
 
-    if (!dias || isNaN(parseInt(dias)) || parseInt(dias) <= 0) {
-      return res.status(400).json({ error: "dias debe ser un número positivo" })
+    if (dias === undefined || dias === null || dias === "" || isNaN(parseInt(dias)) || parseInt(dias) === 0) {
+      return res.status(400).json({ error: "dias debe ser un número distinto de cero" })
     }
 
     const taller = await prisma.taller.findUnique({
