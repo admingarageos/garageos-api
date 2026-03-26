@@ -148,6 +148,23 @@ export const getUserTalleres = async (userId) => {
 }
 
 /* =========================
+   TODOS LOS TALLERES (superAdmin)
+========================= */
+
+export const getAllTalleres = async () => {
+
+  const talleres = await prisma.taller.findMany({
+    orderBy: { nombre: "asc" }
+  })
+
+  return talleres.map(t => ({
+    id: t.id,
+    nombre: t.nombre,
+    rol: "admin"
+  }))
+}
+
+/* =========================
    ME
 ========================= */
 
@@ -160,7 +177,8 @@ export const getMe = async (userId) => {
     select: {
       id: true,
       nombre: true,
-      email: true
+      email: true,
+      superAdmin: true
     }
   })
 

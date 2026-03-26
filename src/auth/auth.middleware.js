@@ -37,7 +37,7 @@ export const requireAuth = async (req, res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, nombre: true, email: true }
+      select: { id: true, nombre: true, email: true, superAdmin: true }
     })
 
     if (!user) {
@@ -52,23 +52,26 @@ export const requireAuth = async (req, res, next) => {
 
     if (tallerId && !isNaN(tallerId)) {
 
-      const relacion = await prisma.userTaller.findFirst({
-        where: {
-          userId: user.id,
-          tallerId
+      // SuperAdmin tiene acceso a cualquier taller sin validar UserTaller
+      if (user.superAdmin) {
+
+        req.taller   = { id: tallerId, rol: "admin" }
+        req.tallerId = tallerId
+
+      } else {
+
+        const relacion = await prisma.userTaller.findFirst({
+          where: { userId: user.id, tallerId }
+        })
+
+        if (!relacion) {
+          return res.status(403).json({ error: "No tienes acceso a este taller" })
         }
-      })
 
-      if (!relacion) {
-        return res.status(403).json({ error: "No tienes acceso a este taller" })
+        req.taller   = { id: tallerId, rol: relacion.rol }
+        req.tallerId = tallerId
+
       }
-
-      req.taller = {
-        id: tallerId,
-        rol: relacion.rol
-      }
-
-      req.tallerId = tallerId
     }
 
     next()

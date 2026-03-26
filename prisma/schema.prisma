@@ -135,10 +135,11 @@ model OrdenServicioDetalle {
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   nombre       String
-  email        String @unique
+  email        String  @unique
   passwordHash String
+  superAdmin   Boolean @default(false)
 
   createdAt DateTime @default(now())
 

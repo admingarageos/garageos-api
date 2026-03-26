@@ -2,6 +2,7 @@ import {
   login,
   register,
   getUserTalleres,
+  getAllTalleres,
   getMe,
   crearTaller
 } from "./auth.service.js"
@@ -71,7 +72,9 @@ export const registerUser = async (req, res) => {
 export const getTalleres = async (req, res) => {
   try {
 
-    const talleres = await getUserTalleres(req.user.id)
+    const talleres = req.user.superAdmin
+      ? await getAllTalleres()
+      : await getUserTalleres(req.user.id)
 
     res.json(talleres)
 
