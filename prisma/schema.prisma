@@ -80,11 +80,23 @@ model Vehiculo {
   tallerId Int
   taller   Taller @relation(fields: [tallerId], references: [id])
 
-  ordenes OrdenServicio[]
-  citas   Cita[]
+  ordenes         OrdenServicio[]
+  citas           Cita[]
+  placaHistorial  PlacaHistorial[]
 
   @@unique([placas, tallerId])
   @@index([clienteId])
+}
+
+model PlacaHistorial {
+  id          Int      @id @default(autoincrement())
+  placa       String
+  fechaCambio DateTime @default(now())
+
+  vehiculoId Int
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+
+  @@index([vehiculoId])
 }
 
 model OrdenServicio {

@@ -188,6 +188,61 @@ router.post("/", async (req, res) => {
 })
 
 /* =========================
+   ACTUALIZAR VEHÍCULO
+   Si las placas cambian, registra la placa
+   anterior en PlacaHistorial.
+========================= */
+
+router.patch("/:id", async (req, res) => {
+  try {
+
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: "ID inválido" })
+
+    const vehiculo = await prisma.vehiculo.findFirst({
+      where: { id, tallerId: req.tallerId }
+    })
+
+    if (!vehiculo) return res.status(404).json({ error: "Vehículo no encontrado" })
+
+    const { marca, modelo, anio, placas } = req.body
+
+    const nuevasPlacas = placas ? placas.trim().toUpperCase() : vehiculo.placas
+    const placasCambiaron = nuevasPlacas !== vehiculo.placas
+
+    const actualizado = await prisma.$transaction(async (tx) => {
+
+      // Guardar placa anterior si cambia
+      if (placasCambiaron) {
+        await tx.placaHistorial.create({
+          data: { placa: vehiculo.placas, vehiculoId: id }
+        })
+      }
+
+      return tx.vehiculo.update({
+        where: { id },
+        data: {
+          ...(marca  && { marca:  marca.trim()  }),
+          ...(modelo && { modelo: modelo.trim() }),
+          ...(anio   && { anio:   parseInt(anio) }),
+          placas: nuevasPlacas
+        }
+      })
+
+    })
+
+    res.json(actualizado)
+
+  } catch (error) {
+    console.error("[PATCH /vehiculos/:id]", error)
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Ya existe un vehículo con esas placas en este taller" })
+    }
+    res.status(500).json({ error: "Error actualizando vehículo" })
+  }
+})
+
+/* =========================
    HISTORIAL VEHICULO
    Verifica que el vehículo pertenezca al taller
 ========================= */
@@ -208,6 +263,7 @@ router.get("/:id/historial", async (req, res) => {
       },
       include: {
         cliente: true,
+        placaHistorial: { orderBy: { fechaCambio: "desc" } },
         ordenes: {
           include: {
             detalles: {
@@ -236,12 +292,14 @@ router.get("/:id/historial", async (req, res) => {
 
     res.json({
       vehiculo: {
-        id: vehiculo.id,
-        marca: vehiculo.marca,
+        id:     vehiculo.id,
+        marca:  vehiculo.marca,
         modelo: vehiculo.modelo,
+        anio:   vehiculo.anio,
         placas: vehiculo.placas
       },
-      cliente: vehiculo.cliente,
+      cliente:        vehiculo.cliente,
+      placaHistorial: vehiculo.placaHistorial,
       ordenes
     })
 
