@@ -60,6 +60,10 @@ export const registerUser = async (req, res) => {
       return res.status(409).json({ error: "El correo ya está registrado" })
     }
 
+    if (error.message === "REGISTRO_DESHABILITADO") {
+      return res.status(403).json({ error: "El registro de nuevas cuentas está deshabilitado" })
+    }
+
     console.error("[registerUser]", error)
     res.status(500).json({ error: "Error creando cuenta" })
   }

@@ -61,11 +61,16 @@ export const requireAuth = async (req, res, next) => {
       } else {
 
         const relacion = await prisma.userTaller.findFirst({
-          where: { userId: user.id, tallerId }
+          where:   { userId: user.id, tallerId },
+          include: { taller: { select: { suspendido: true } } }
         })
 
         if (!relacion) {
           return res.status(403).json({ error: "No tienes acceso a este taller" })
+        }
+
+        if (relacion.taller.suspendido) {
+          return res.status(403).json({ error: "Este taller está suspendido" })
         }
 
         req.taller   = { id: tallerId, rol: relacion.rol }

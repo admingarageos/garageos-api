@@ -68,6 +68,14 @@ export const register = async ({ nombre, email, password, nombreTaller }) => {
     throw new Error("PASSWORD_TOO_SHORT")
   }
 
+  // Verificar si el registro público está habilitado
+  const config = await prisma.platformConfig.findUnique({
+    where: { key: "registroHabilitado" }
+  })
+  if (config?.value === "false") {
+    throw new Error("REGISTRO_DESHABILITADO")
+  }
+
   // Normalizar email
   const emailNorm = email.toLowerCase().trim()
 

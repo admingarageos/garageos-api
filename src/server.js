@@ -31,10 +31,12 @@ import vehiculosRoutes from "./routes/vehiculos.routes.js"
 import serviciosRoutes from "./routes/servicios.routes.js"
 import tallerRoutes from "./routes/taller.routes.js"
 import citasRoutes from "./routes/citas.routes.js"
+import superAdminRoutes from "./routes/superAdmin.routes.js"
 
 import { requireAuth } from "./auth/auth.middleware.js"
 import { tallerMiddleware } from "./middleware/taller.middleware.js"
 import { requireRol } from "./middleware/roleMiddleware.js"
+import { requireSuperAdmin } from "./middleware/superAdminMiddleware.js"
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -131,7 +133,8 @@ app.use("/api/servicios", requireAuth, tallerMiddleware, serviciosRoutes)
    RUTAS PROTEGIDAS (auth + taller) — solo admin
 ========================= */
 
-app.use("/api/dashboard", requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
+app.use("/api/dashboard",    requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
+app.use("/api/super-admin", requireAuth, requireSuperAdmin, superAdminRoutes)
 
 /* =========================
    MANEJADOR GLOBAL DE ERRORES
