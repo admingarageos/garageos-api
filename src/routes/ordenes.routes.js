@@ -5,7 +5,9 @@ import {
   getOrden,
   crearOrden,
   cambiarEstadoOrden,
-  cancelarOrden
+  cancelarOrden,
+  getComentarios,
+  agregarComentario
 } from "../controllers/ordenes.controller.js"
 
 import {
@@ -72,6 +74,13 @@ router.get("/:id/total",      validarId, getTotalOrden)
 router.put("/servicios/:detalleId",          actualizarPrecioServicio)
 router.put("/servicios/:detalleId/cantidad", actualizarCantidadServicio)
 router.delete("/servicios/:detalleId",       eliminarServicioOrden)
+
+/* ================================
+   COMENTARIOS
+================================ */
+
+router.get("/:id/comentarios",  validarId, getComentarios)
+router.post("/:id/comentarios", validarId, agregarComentario)
 
 /* ================================
    PDF

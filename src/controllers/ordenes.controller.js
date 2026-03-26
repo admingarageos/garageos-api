@@ -247,6 +247,80 @@ export const cancelarOrden = async (req, res) => {
 }
 
 /* =================================
+   COMENTARIOS DE ORDEN
+================================= */
+
+export const getComentarios = async (req, res) => {
+
+  try {
+
+    if (!requireTaller(req, res)) return
+
+    const ordenId = parseInt(req.params.id)
+
+    // Verificar que la orden pertenece al taller
+    const orden = await prisma.ordenServicio.findFirst({
+      where:  { id: ordenId, tallerId: req.tallerId },
+      select: { id: true }
+    })
+
+    if (!orden) {
+      return res.status(404).json({ error: "Orden no encontrada" })
+    }
+
+    const comentarios = await prisma.ordenComentario.findMany({
+      where:   { ordenId },
+      include: { user: { select: { id: true, nombre: true } } },
+      orderBy: { createdAt: "asc" }
+    })
+
+    res.json(comentarios)
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Error obteniendo comentarios" })
+  }
+
+}
+
+export const agregarComentario = async (req, res) => {
+
+  try {
+
+    if (!requireTaller(req, res)) return
+
+    const ordenId = parseInt(req.params.id)
+    const { texto } = req.body
+
+    if (!texto?.trim()) {
+      return res.status(400).json({ error: "El comentario no puede estar vacío" })
+    }
+
+    // Verificar que la orden pertenece al taller
+    const orden = await prisma.ordenServicio.findFirst({
+      where:  { id: ordenId, tallerId: req.tallerId },
+      select: { id: true }
+    })
+
+    if (!orden) {
+      return res.status(404).json({ error: "Orden no encontrada" })
+    }
+
+    const comentario = await prisma.ordenComentario.create({
+      data:    { texto: texto.trim(), ordenId, userId: req.user.id },
+      include: { user: { select: { id: true, nombre: true } } }
+    })
+
+    res.status(201).json(comentario)
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Error guardando comentario" })
+  }
+
+}
+
+/* =================================
    TOTAL DE ORDEN
 ================================= */
 

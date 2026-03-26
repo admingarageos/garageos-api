@@ -108,8 +108,9 @@ model OrdenServicio {
   tallerId Int
   taller   Taller @relation(fields: [tallerId], references: [id])
 
-  detalles OrdenServicioDetalle[]
-  cita     Cita?
+  detalles     OrdenServicioDetalle[]
+  cita         Cita?
+  comentarios  OrdenComentario[]
 
   @@index([vehiculoId])
   @@index([tallerId])
@@ -149,7 +150,22 @@ model User {
 
   createdAt DateTime @default(now())
 
-  talleres UserTaller[]
+  talleres    UserTaller[]
+  comentarios OrdenComentario[]
+}
+
+model OrdenComentario {
+  id        Int      @id @default(autoincrement())
+  texto     String
+  createdAt DateTime @default(now())
+
+  ordenId Int
+  orden   OrdenServicio @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId])
 }
 
 model UserTaller {
