@@ -147,7 +147,6 @@ export const cambiarEstadoOrden = async (req, res) => {
       return res.status(400).json({ error: "Estado inválido" })
     }
 
-    // ✅ Mecánicos no pueden cancelar
     if (estado === "cancelada" && req.taller?.rol !== "admin") {
       return res.status(403).json({
         error: "Solo un administrador puede cancelar órdenes"
@@ -160,10 +159,19 @@ export const cambiarEstadoOrden = async (req, res) => {
 
     const data = { estado }
 
+    // ✅ Método de pago
     if (ESTADOS_CON_PAGO.includes(estado) && metodoPago) {
       data.metodoPago = metodoPago
     } else if (!ESTADOS_CON_PAGO.includes(estado)) {
       data.metodoPago = null
+    }
+
+    // ✅ Fecha de entrega — se registra automáticamente al entregar,
+    //    se limpia si la orden regresa a cualquier otro estado
+    if (estado === "entregada") {
+      data.fechaEntrega = new Date()
+    } else {
+      data.fechaEntrega = null
     }
 
     const result = await prisma.ordenServicio.updateMany({
@@ -211,14 +219,14 @@ export const cancelarOrden = async (req, res) => {
       return res.status(409).json({ error: "La orden ya está cancelada" })
     }
 
-    // Transacción: cancelar orden + desvincular cita si existe
     await prisma.$transaction(async (tx) => {
 
       await tx.ordenServicio.update({
         where: { id },
         data:  {
-          estado:     "cancelada",
-          metodoPago: null
+          estado:       "cancelada",
+          metodoPago:   null,
+          fechaEntrega: null
         }
       })
 

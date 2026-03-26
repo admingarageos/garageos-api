@@ -87,6 +87,7 @@ model OrdenServicio {
   notasInternas String?
 
   fecha         DateTime    @default(now())
+  fechaEntrega  DateTime?                    // ✅ Se llena al pasar a "entregada"
   estado        EstadoOrden @default(pendiente)
   total         Float       @default(0)
 
