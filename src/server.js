@@ -56,7 +56,6 @@ const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
   : ["http://localhost:5173"]
 
-console.log("🌐 CORS origins permitidos:", allowedOrigins)
 
 app.use(cors({
   origin: allowedOrigins
