@@ -40,6 +40,37 @@ router.get("/", async (req, res) => {
 })
 
 /* =========================
+   HELPER — límite de mecánicos por plan
+========================= */
+
+const LIMITE_MECANICOS = {
+  trial:    1,
+  basico:   1,
+  estandar: 5,
+  pro:      Infinity,
+  manual:   Infinity,
+}
+
+async function verificarLimiteMecanicos(tallerId) {
+  const taller = await prisma.taller.findUnique({ where: { id: tallerId } })
+  const plan   = taller?.planTipo || "trial"
+  const limite = LIMITE_MECANICOS[plan] ?? 1
+
+  if (limite === Infinity) return null // sin límite
+
+  const mecanicos = await prisma.userTaller.count({
+    where: { tallerId, rol: "mecanico" }
+  })
+
+  if (mecanicos >= limite) {
+    const labels = { trial: "Trial", basico: "Básico", estandar: "Estándar" }
+    return `Tu plan ${labels[plan] || plan} permite máximo ${limite} mecánico${limite > 1 ? "s" : ""}. Actualiza tu plan para agregar más.`
+  }
+
+  return null
+}
+
+/* =========================
    CREAR USUARIO NUEVO
 ========================= */
 
@@ -55,13 +86,17 @@ router.post("/", async (req, res) => {
       })
     }
 
+    if ((rol || "mecanico") === "mecanico") {
+      const limiteError = await verificarLimiteMecanicos(tallerId)
+      if (limiteError) return res.status(403).json({ error: limiteError })
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } })
 
     if (existing) {
       return res.status(400).json({ error: "El email ya está registrado" })
     }
 
-    // 🔐 Hash del password
     const passwordHash = await bcrypt.hash(password, 10)
 
     const newUser = await prisma.user.create({
@@ -101,6 +136,11 @@ router.post("/invitar", async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ error: "Email requerido" })
+    }
+
+    if ((rol || "mecanico") === "mecanico") {
+      const limiteError = await verificarLimiteMecanicos(tallerId)
+      if (limiteError) return res.status(403).json({ error: limiteError })
     }
 
     const user = await prisma.user.findUnique({ where: { email } })
