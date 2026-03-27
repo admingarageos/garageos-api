@@ -23,6 +23,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 import authRoutes from "./auth/auth.routes.js"
+import stripeRoutes from "./routes/stripe.routes.js"
+import { handleWebhook } from "./controllers/stripe.controller.js"
 import usuariosRoutes from "./routes/usuarios.routes.js"
 import dashboardRoutes from "./routes/dashboard.routes.js"
 import ordenesRoutes from "./routes/ordenes.routes.js"
@@ -105,6 +107,12 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authLimiter, authRoutes)
 
 /* =========================
+   WEBHOOK STRIPE — raw body, sin auth
+========================= */
+
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleWebhook)
+
+/* =========================
    RUTAS PROTEGIDAS (auth)
 ========================= */
 
@@ -138,6 +146,7 @@ app.use("/api/servicios", requireAuth, tallerMiddleware, serviciosRoutes)
 
 app.use("/api/dashboard",    requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
 app.use("/api/super-admin", requireAuth, requireSuperAdmin, superAdminRoutes)
+app.use("/api/stripe",     requireAuth, tallerMiddleware, stripeRoutes)
 
 /* =========================
    MANEJADOR GLOBAL DE ERRORES

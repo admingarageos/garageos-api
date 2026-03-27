@@ -35,8 +35,12 @@ model Taller {
   suspendido Boolean  @default(false)
 
   // Licenciamiento
-  licenciaVence DateTime?
-  planTipo      String?   @default("trial")  // "trial" | "basico" | "estandar" | "pro" | "manual"
+  licenciaVence        DateTime?
+  planTipo             String?   @default("trial")  // "trial" | "basico" | "estandar" | "pro" | "manual"
+
+  // Stripe
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
 
   createdAt DateTime @default(now())
 
