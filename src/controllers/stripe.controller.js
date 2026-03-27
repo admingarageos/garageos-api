@@ -86,6 +86,25 @@ export async function handleWebhook(req, res) {
     })
   }
 
+  if (event.type === "customer.subscription.updated") {
+    const subscription = event.data.object
+    const priceId = subscription.items?.data?.[0]?.price?.id
+    const plan    = PLAN_POR_PRICE[priceId]
+
+    if (plan) {
+      const taller = await prisma.taller.findFirst({
+        where: { stripeSubscriptionId: subscription.id },
+      })
+      if (taller) {
+        const licenciaVence = new Date(subscription.current_period_end * 1000)
+        await prisma.taller.update({
+          where: { id: taller.id },
+          data:  { planTipo: plan, licenciaVence, suspendido: false },
+        })
+      }
+    }
+  }
+
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object
     const taller = await prisma.taller.findFirst({

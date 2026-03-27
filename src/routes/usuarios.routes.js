@@ -71,6 +71,33 @@ async function verificarLimiteRol(tallerId, rol) {
 }
 
 /* =========================
+   LÍMITES DEL PLAN
+========================= */
+
+router.get("/limites", async (req, res) => {
+  try {
+    const tallerId = req.tallerId
+    const taller   = await prisma.taller.findUnique({ where: { id: tallerId } })
+    const plan     = taller?.planTipo || "trial"
+    const limites  = LIMITES_PLAN[plan] ?? LIMITES_PLAN.trial
+
+    const [admins, mecanicos] = await Promise.all([
+      prisma.userTaller.count({ where: { tallerId, rol: "admin"    } }),
+      prisma.userTaller.count({ where: { tallerId, rol: "mecanico" } }),
+    ])
+
+    res.json({
+      plan,
+      admin:    { usado: admins,    max: limites.admin    === Infinity ? null : limites.admin    },
+      mecanico: { usado: mecanicos, max: limites.mecanico === Infinity ? null : limites.mecanico },
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Error obteniendo límites" })
+  }
+})
+
+/* =========================
    CREAR USUARIO NUEVO
 ========================= */
 
@@ -196,6 +223,9 @@ router.patch("/:userId/rol", async (req, res) => {
         error: "No puedes cambiar tu propio rol"
       })
     }
+
+    const limiteError = await verificarLimiteRol(tallerId, rol)
+    if (limiteError) return res.status(403).json({ error: limiteError })
 
     await prisma.userTaller.updateMany({
       where: { userId, tallerId },
