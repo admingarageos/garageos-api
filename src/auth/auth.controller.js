@@ -4,7 +4,9 @@ import {
   getUserTalleres,
   getAllTalleres,
   getMe,
-  crearTaller
+  crearTaller,
+  forgotPassword,
+  resetPassword
 } from "./auth.service.js"
 
 /* =========================
@@ -108,6 +110,49 @@ export const me = async (req, res) => {
 
     console.error("[me]", error)
     res.status(500).json({ error: "Error obteniendo usuario" })
+  }
+}
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+
+export const forgotPasswordController = async (req, res) => {
+  try {
+    const email = req.body.email?.toLowerCase().trim()
+    await forgotPassword(email)
+    // Siempre 200 para no revelar si el email existe
+    res.json({ mensaje: "Si el correo existe, recibirás un enlace para restablecer tu contraseña." })
+  } catch (error) {
+    if (error.message === "MISSING_EMAIL") {
+      return res.status(400).json({ error: "Email requerido" })
+    }
+    console.error("[forgotPasswordController]", error)
+    res.status(500).json({ error: "Error procesando solicitud" })
+  }
+}
+
+/* =========================
+   RESET PASSWORD
+========================= */
+
+export const resetPasswordController = async (req, res) => {
+  try {
+    const { token, password } = req.body
+    await resetPassword(token, password)
+    res.json({ mensaje: "Contraseña actualizada correctamente" })
+  } catch (error) {
+    if (error.message === "MISSING_FIELDS") {
+      return res.status(400).json({ error: "Token y contraseña son requeridos" })
+    }
+    if (error.message === "PASSWORD_TOO_SHORT") {
+      return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" })
+    }
+    if (error.message === "INVALID_OR_EXPIRED_TOKEN") {
+      return res.status(400).json({ error: "El enlace es inválido o ya expiró" })
+    }
+    console.error("[resetPasswordController]", error)
+    res.status(500).json({ error: "Error actualizando contraseña" })
   }
 }
 

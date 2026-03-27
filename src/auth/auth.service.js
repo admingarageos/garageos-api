@@ -1,6 +1,16 @@
 import prisma from "../lib/prisma.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
+import crypto from "crypto"
+import nodemailer from "nodemailer"
+
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+})
 
 /* =========================
    JWT_SECRET — falla en arranque si no está
@@ -209,6 +219,80 @@ export const getMe = async (userId) => {
   })
 
   return user
+}
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+
+export const forgotPassword = async (email) => {
+  if (!email) throw new Error("MISSING_EMAIL")
+
+  const emailNorm = email.toLowerCase().trim()
+  const user = await prisma.user.findUnique({ where: { email: emailNorm } })
+
+  // Siempre respondemos igual para no revelar si el email existe
+  if (!user) return
+
+  const token   = crypto.randomBytes(32).toString("hex")
+  const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hora
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      resetToken:        token,
+      resetTokenExpires: expires
+    }
+  })
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
+  const resetUrl    = `${frontendUrl}/reset-password?token=${token}`
+
+  await mailer.sendMail({
+    from:    `"GarageOS" <${process.env.GMAIL_USER}>`,
+    to:      emailNorm,
+    subject: "Recupera tu contraseña de GarageOS",
+    html: `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px">
+        <h2 style="color:#1e293b">Recuperación de contraseña</h2>
+        <p style="color:#475569">Hola <strong>${user.nombre}</strong>,</p>
+        <p style="color:#475569">Recibimos una solicitud para restablecer la contraseña de tu cuenta en GarageOS.</p>
+        <p style="color:#475569">Haz clic en el botón de abajo para crear una nueva contraseña. Este enlace es válido por <strong>1 hora</strong>.</p>
+        <a href="${resetUrl}"
+           style="display:inline-block;margin:16px 0;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+          Restablecer contraseña
+        </a>
+        <p style="color:#94a3b8;font-size:13px">Si no solicitaste esto, puedes ignorar este correo. Tu contraseña no cambiará.</p>
+        <p style="color:#94a3b8;font-size:12px;margin-top:24px">GarageOS — Sistema operativo del taller</p>
+      </div>
+    `
+  })
+}
+
+/* =========================
+   RESET PASSWORD
+========================= */
+
+export const resetPassword = async (token, newPassword) => {
+  if (!token || !newPassword) throw new Error("MISSING_FIELDS")
+  if (newPassword.length < 8)  throw new Error("PASSWORD_TOO_SHORT")
+
+  const user = await prisma.user.findUnique({ where: { resetToken: token } })
+
+  if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+    throw new Error("INVALID_OR_EXPIRED_TOKEN")
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12)
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      resetToken:        null,
+      resetTokenExpires: null
+    }
+  })
 }
 
 /* =========================

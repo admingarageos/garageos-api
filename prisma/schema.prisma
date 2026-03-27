@@ -168,6 +168,9 @@ model User {
   passwordHash String
   superAdmin   Boolean @default(false)
 
+  resetToken        String?   @unique
+  resetTokenExpires DateTime?
+
   createdAt DateTime @default(now())
 
   talleres          UserTaller[]

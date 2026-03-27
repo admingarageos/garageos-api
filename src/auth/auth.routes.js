@@ -4,7 +4,9 @@ import {
   registerUser,
   getTalleres,
   me,
-  crearTallerController
+  crearTallerController,
+  forgotPasswordController,
+  resetPasswordController
 } from "./auth.controller.js"
 
 import { requireAuth } from "./auth.middleware.js"
@@ -13,6 +15,8 @@ const router = Router()
 
 router.post("/login", loginUser)
 router.post("/register", registerUser)
+router.post("/forgot-password", forgotPasswordController)
+router.post("/reset-password",  resetPasswordController)
 
 // 🔐 protegidas
 router.get("/me", requireAuth, me)
