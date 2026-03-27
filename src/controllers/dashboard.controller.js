@@ -23,26 +23,27 @@ export const getResumen = async (req, res) => {
     const mes = new Date()
     mes.setDate(mes.getDate() - 30)
 
-    const filtro = { tallerId: req.tallerId }
+    const filtro        = { tallerId: req.tallerId }
+    const filtroIngresos = { ...filtro, estado: { in: ["terminada", "entregada"] } }
 
     const ventasHoy = await prisma.ordenServicio.aggregate({
       _sum: { total: true },
-      where: { ...filtro, fecha: { gte: hoy } }
+      where: { ...filtroIngresos, fecha: { gte: hoy } }
     })
 
     const ventasSemana = await prisma.ordenServicio.aggregate({
       _sum: { total: true },
-      where: { ...filtro, fecha: { gte: semana } }
+      where: { ...filtroIngresos, fecha: { gte: semana } }
     })
 
     const ventasMes = await prisma.ordenServicio.aggregate({
       _sum: { total: true },
-      where: { ...filtro, fecha: { gte: mes } }
+      where: { ...filtroIngresos, fecha: { gte: mes } }
     })
 
     const ticketPromedio = await prisma.ordenServicio.aggregate({
       _avg: { total: true },
-      where: filtro
+      where: filtroIngresos
     })
 
     const pendientes = await prisma.ordenServicio.count({
@@ -103,7 +104,7 @@ export const getFinanzas = async (req, res) => {
       })
     }
 
-    const filtro = { tallerId: req.tallerId }
+    const filtro = { tallerId: req.tallerId, estado: { in: ["terminada", "entregada"] } }
 
     const ingresos = await prisma.ordenServicio.aggregate({
       _sum: { total: true },

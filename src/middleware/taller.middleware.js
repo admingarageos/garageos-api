@@ -1,17 +1,6 @@
 export const tallerMiddleware = (req, res, next) => {
 
-  let tallerId = req.headers["x-taller-id"]
-
-  /* ==========================
-     FALLBACK PARA DESARROLLO
-  ========================== */
-
-  if (!tallerId) {
-
-    // permite usar query ?tallerId=1 si no viene header
-    tallerId = req.query.tallerId
-
-  }
+  const tallerId = req.headers["x-taller-id"]
 
   if (!tallerId) {
 
