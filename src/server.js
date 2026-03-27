@@ -64,6 +64,12 @@ app.use(cors({
 }))
 
 /* =========================
+   WEBHOOK STRIPE — raw body, ANTES del json parser
+========================= */
+
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleWebhook)
+
+/* =========================
    BODY PARSER (con límite)
 ========================= */
 
@@ -105,12 +111,6 @@ app.get("/", (req, res) => {
 })
 
 app.use("/api/auth", authLimiter, authRoutes)
-
-/* =========================
-   WEBHOOK STRIPE — raw body, sin auth
-========================= */
-
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleWebhook)
 
 /* =========================
    RUTAS PROTEGIDAS (auth)
