@@ -36,7 +36,8 @@ import tallerRoutes from "./routes/taller.routes.js"
 import citasRoutes from "./routes/citas.routes.js"
 import pushRoutes from "./routes/push.routes.js"
 import superAdminRoutes from "./routes/superAdmin.routes.js"
-import refaccionesRoutes from "./routes/refacciones.routes.js"
+import refaccionesRoutes  from "./routes/refacciones.routes.js"
+import contabilidadRoutes from "./routes/contabilidad.routes.js"
 
 import { requireAuth } from "./auth/auth.middleware.js"
 import { tallerMiddleware } from "./middleware/taller.middleware.js"
@@ -152,8 +153,9 @@ app.use("/api/servicios", requireAuth, tallerMiddleware, serviciosRoutes)
    RUTAS PROTEGIDAS (auth + taller) — solo admin
 ========================= */
 
-app.use("/api/refacciones",  requireAuth, tallerMiddleware, requireRol("admin"), requirePlan("estandar", "pro", "manual"), refaccionesRoutes)
-app.use("/api/dashboard",    requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
+app.use("/api/refacciones",   requireAuth, tallerMiddleware, requireRol("admin"), requirePlan("estandar", "pro", "manual"), refaccionesRoutes)
+app.use("/api/contabilidad",  requireAuth, tallerMiddleware, requireRol("admin"), requirePlan("estandar", "pro", "manual"), contabilidadRoutes)
+app.use("/api/dashboard",     requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
 app.use("/api/super-admin", requireAuth, requireSuperAdmin, superAdminRoutes)
 app.use("/api/stripe",     requireAuth, tallerMiddleware, stripeRoutes)
 

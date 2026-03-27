@@ -52,6 +52,7 @@ model Taller {
   pushSubscriptions PushSubscription[]
   invitaciones      Invitacion[]
   refacciones       Refaccion[]
+  gastos            Gasto[]
 }
 
 model PlatformConfig {
@@ -292,6 +293,24 @@ model OrdenRefaccion {
 
   @@index([ordenId])
   @@index([refaccionId])
+}
+
+model Gasto {
+  id        Int      @id @default(autoincrement())
+  concepto  String
+  monto     Float
+  categoria String   @default("general") // combustible | materiales | renta | salarios | servicios | herramientas | general
+  fecha     DateTime @default(now())
+  nota      String?
+
+  tallerId  Int
+  taller    Taller @relation(fields: [tallerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tallerId])
+  @@index([fecha])
 }
 
 model Invitacion {
