@@ -32,6 +32,51 @@ router.get("/", async (req, res) => {
 })
 
 /* =========================
+   SEGUIMIENTO — clientes sin visita en 6+ meses
+========================= */
+
+router.get("/seguimiento", async (req, res) => {
+  try {
+
+    const tallerId  = req.tallerId
+    const hace6Meses = new Date()
+    hace6Meses.setMonth(hace6Meses.getMonth() - 6)
+
+    const clientes = await prisma.cliente.findMany({
+      where: { tallerId },
+      include: {
+        vehiculos: true,
+        ordenes: {
+          orderBy: { fecha: "desc" },
+          take: 1,
+          select: { id: true, fecha: true, descripcion: true }
+        }
+      },
+      orderBy: { nombre: "asc" }
+    })
+
+    const pendientes = clientes
+      .filter(c => {
+        if (c.ordenes.length === 0) return true
+        return new Date(c.ordenes[0].fecha) < hace6Meses
+      })
+      .map(c => ({
+        id:           c.id,
+        nombre:       c.nombre,
+        telefono:     c.telefono,
+        vehiculos:    c.vehiculos,
+        ultimaVisita: c.ordenes[0]?.fecha || null,
+      }))
+
+    res.json(pendientes)
+
+  } catch (error) {
+    console.error("[GET /clientes/seguimiento]", error)
+    res.status(500).json({ error: "Error obteniendo seguimiento" })
+  }
+})
+
+/* =========================
    CLIENTE POR ID
    Verifica que pertenezca al taller
 ========================= */
