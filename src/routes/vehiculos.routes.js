@@ -173,7 +173,7 @@ router.post("/", async (req, res) => {
         marca: marca.trim(),
         modelo: modelo.trim(),
         anio: parseInt(anio),
-        placas: placas.trim().toUpperCase(),
+        placas: placas.replace(/\s+/g, "").toUpperCase(),
         clienteId,
         tallerId: req.tallerId
       }
@@ -207,7 +207,7 @@ router.patch("/:id", async (req, res) => {
 
     const { marca, modelo, anio, placas } = req.body
 
-    const nuevasPlacas = placas ? placas.trim().toUpperCase() : vehiculo.placas
+    const nuevasPlacas = placas ? placas.replace(/\s+/g, "").toUpperCase() : vehiculo.placas
     const placasCambiaron = nuevasPlacas !== vehiculo.placas
 
     const actualizado = await prisma.$transaction(async (tx) => {
