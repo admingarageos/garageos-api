@@ -51,6 +51,7 @@ model Taller {
   citas             Cita[]
   pushSubscriptions PushSubscription[]
   invitaciones      Invitacion[]
+  refacciones       Refaccion[]
 }
 
 model PlatformConfig {
@@ -255,6 +256,25 @@ model PushSubscription {
   @@unique([endpoint, tallerId])
   @@index([tallerId])
   @@index([userId])
+}
+
+model Refaccion {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  sku         String?
+  precioCosto Float    @default(0)
+  precioVenta Float    @default(0)
+  stock       Int      @default(0)
+  stockMinimo Int      @default(5)
+
+  tallerId Int
+  taller   Taller @relation(fields: [tallerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tallerId])
 }
 
 model Invitacion {
