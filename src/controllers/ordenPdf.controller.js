@@ -148,12 +148,15 @@ export const generarPDFOrden = async (req, res) => {
       const subtotal = item.precio * item.cantidad
       total += subtotal
 
-      doc.text(item.servicio?.nombre || "-", 40, y)
-      doc.text(item.cantidad.toString(),     300, y, { width: 50, align: "right" })
-      doc.text(`$${item.precio.toFixed(2)}`, 360, y, { width: 90, align: "right" })
-      doc.text(`$${subtotal.toFixed(2)}`,    460, y, { width: 90, align: "right" })
+      const nombre     = item.servicio?.nombre || "-"
+      const rowHeight  = Math.max(20, doc.heightOfString(nombre, { width: 245 }))
 
-      y += 20
+      doc.text(nombre,                       45,  y, { width: 245 })
+      doc.text(item.cantidad.toString(),     300, y, { width: 50,  align: "right" })
+      doc.text(`$${item.precio.toFixed(2)}`, 360, y, { width: 90,  align: "right" })
+      doc.text(`$${subtotal.toFixed(2)}`,    460, y, { width: 90,  align: "right" })
+
+      y += rowHeight + 5
 
     })
 
