@@ -42,6 +42,7 @@ import { requireAuth } from "./auth/auth.middleware.js"
 import { tallerMiddleware } from "./middleware/taller.middleware.js"
 import { requireRol } from "./middleware/roleMiddleware.js"
 import { requireSuperAdmin } from "./middleware/superAdminMiddleware.js"
+import { requirePlan } from "./middleware/planMiddleware.js"
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -151,7 +152,7 @@ app.use("/api/servicios", requireAuth, tallerMiddleware, serviciosRoutes)
    RUTAS PROTEGIDAS (auth + taller) — solo admin
 ========================= */
 
-app.use("/api/refacciones",  requireAuth, tallerMiddleware, requireRol("admin"), refaccionesRoutes)
+app.use("/api/refacciones",  requireAuth, tallerMiddleware, requireRol("admin"), requirePlan("estandar", "pro", "manual"), refaccionesRoutes)
 app.use("/api/dashboard",    requireAuth, tallerMiddleware, requireRol("admin"), dashboardRoutes)
 app.use("/api/super-admin", requireAuth, requireSuperAdmin, superAdminRoutes)
 app.use("/api/stripe",     requireAuth, tallerMiddleware, stripeRoutes)
