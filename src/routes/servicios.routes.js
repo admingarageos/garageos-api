@@ -51,6 +51,10 @@ router.post("/", requireRol("admin"), async (req, res) => {
       })
     }
 
+    if (isNaN(parseFloat(precio)) || parseFloat(precio) < 0) {
+      return res.status(400).json({ error: "Precio inválido" })
+    }
+
     const existente = await prisma.servicio.findFirst({
       where: { nombre: nombre.trim() }
     })

@@ -104,7 +104,8 @@ router.get("/limites", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
 
-    const { nombre, email, password, rol } = req.body
+    const { nombre, password, rol } = req.body
+    const email    = req.body.email?.toLowerCase().trim()
     const tallerId = req.tallerId
 
     if (!nombre || !email || !password) {
@@ -157,7 +158,8 @@ router.post("/", async (req, res) => {
 router.post("/invitar", async (req, res) => {
   try {
 
-    const { email, rol } = req.body
+    const { rol } = req.body
+    const email    = req.body.email?.toLowerCase().trim()
     const tallerId = req.tallerId
 
     if (!email) {
