@@ -131,6 +131,7 @@ model OrdenServicio {
   taller   Taller @relation(fields: [tallerId], references: [id])
 
   detalles     OrdenServicioDetalle[]
+  refacciones  OrdenRefaccion[]
   cita         Cita?
   comentarios  OrdenComentario[]
 
@@ -274,7 +275,23 @@ model Refaccion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  ordenes OrdenRefaccion[]
+
   @@index([tallerId])
+}
+
+model OrdenRefaccion {
+  id          Int   @id @default(autoincrement())
+  ordenId     Int
+  refaccionId Int
+  cantidad    Int   @default(1)
+  precio      Float // precio de venta al momento de agregar
+
+  orden     OrdenServicio @relation(fields: [ordenId],     references: [id])
+  refaccion Refaccion     @relation(fields: [refaccionId], references: [id])
+
+  @@index([ordenId])
+  @@index([refaccionId])
 }
 
 model Invitacion {

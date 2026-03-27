@@ -23,7 +23,17 @@ import {
   generarPDFOrden
 } from "../controllers/ordenPdf.controller.js"
 
-import { requireRol } from "../middleware/roleMiddleware.js"
+import {
+  getRefaccionesOrden,
+  agregarRefaccionOrden,
+  actualizarCantidadRefaccionOrden,
+  eliminarRefaccionOrden
+} from "../controllers/ordenRefacciones.controller.js"
+
+import { requireRol }  from "../middleware/roleMiddleware.js"
+import { requirePlan } from "../middleware/planMiddleware.js"
+
+const PLAN_REFACCIONES = requirePlan("estandar", "pro", "manual")
 
 const router = Router()
 
@@ -74,6 +84,16 @@ router.get("/:id/total",      validarId, getTotalOrden)
 router.put("/servicios/:detalleId",          actualizarPrecioServicio)
 router.put("/servicios/:detalleId/cantidad", actualizarCantidadServicio)
 router.delete("/servicios/:detalleId",       eliminarServicioOrden)
+
+/* ================================
+   REFACCIONES EN ORDEN — solo plan Estándar+
+================================ */
+
+router.get("/:id/refacciones",  validarId, PLAN_REFACCIONES, getRefaccionesOrden)
+router.post("/:id/refacciones", validarId, PLAN_REFACCIONES, agregarRefaccionOrden)
+
+router.put("/refacciones/:refOrdenId/cantidad", PLAN_REFACCIONES, actualizarCantidadRefaccionOrden)
+router.delete("/refacciones/:refOrdenId",       PLAN_REFACCIONES, eliminarRefaccionOrden)
 
 /* ================================
    COMENTARIOS

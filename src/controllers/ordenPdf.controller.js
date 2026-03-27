@@ -37,6 +37,11 @@ export const generarPDFOrden = async (req, res) => {
             servicio: true
           }
         },
+        refacciones: {
+          include: {
+            refaccion: true
+          }
+        },
         taller: true
       }
 
@@ -159,6 +164,37 @@ export const generarPDFOrden = async (req, res) => {
       y += rowHeight + 5
 
     })
+
+    // Refacciones (solo si existen — plan Estándar+)
+    if (orden.refacciones?.length > 0) {
+
+      y += 5
+      doc.moveTo(45, y).lineTo(550, y).stroke("#d1d5db")
+      y += 8
+
+      doc.fontSize(9).font("Helvetica-Bold").fillColor("#6b7280")
+      doc.text("Refacciones / Piezas", 45, y)
+      y += 14
+      doc.font("Helvetica").fillColor("black").fontSize(10)
+
+      orden.refacciones.forEach(item => {
+
+        const subtotal  = item.precio * item.cantidad
+        total += subtotal
+
+        const nombre    = item.refaccion?.nombre || "-"
+        const rowHeight = Math.max(20, doc.heightOfString(nombre, { width: 245 }))
+
+        doc.text(nombre,                       45,  y, { width: 245 })
+        doc.text(item.cantidad.toString(),     300, y, { width: 50,  align: "right" })
+        doc.text(`$${item.precio.toFixed(2)}`, 360, y, { width: 90,  align: "right" })
+        doc.text(`$${subtotal.toFixed(2)}`,    460, y, { width: 90,  align: "right" })
+
+        y += rowHeight + 5
+
+      })
+
+    }
 
     /* ==============================
        BLOQUE TOTAL + MÉTODO DE PAGO

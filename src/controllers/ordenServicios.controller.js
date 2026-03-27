@@ -25,11 +25,14 @@ const getDetalleConAcceso = async (detalleId, tallerId) => {
 ================================= */
 
 const recalcularTotalOrden = async (ordenId) => {
-  const detalles = await prisma.ordenServicioDetalle.findMany({
-    where: { ordenId }
-  })
+  const [detalles, refacciones] = await Promise.all([
+    prisma.ordenServicioDetalle.findMany({ where: { ordenId } }),
+    prisma.ordenRefaccion.findMany({ where: { ordenId } })
+  ])
 
-  const total = detalles.reduce((acc, d) => acc + d.precio * d.cantidad, 0)
+  const total =
+    detalles.reduce((acc, d) => acc + d.precio * d.cantidad, 0) +
+    refacciones.reduce((acc, r) => acc + r.precio * r.cantidad, 0)
 
   await prisma.ordenServicio.update({
     where: { id: ordenId },
