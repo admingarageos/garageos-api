@@ -81,6 +81,29 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Nombre requerido" })
     }
 
+    // Verificar talleres existentes del usuario
+    const talleresUsuario = await prisma.userTaller.findMany({
+      where: { userId: req.user.id },
+      include: { taller: true }
+    })
+
+    // Bloquear nombre duplicado
+    const nombreDuplicado = talleresUsuario.some(
+      t => t.taller.nombre.trim().toLowerCase() === nombre.trim().toLowerCase()
+    )
+    if (nombreDuplicado) {
+      return res.status(409).json({ error: "Ya tienes un taller con ese nombre" })
+    }
+
+    // Límite por plan: Básico y Estándar solo permiten 1 taller
+    if (talleresUsuario.length > 0) {
+      const primerTaller = talleresUsuario[0].taller
+      const plan = primerTaller.planTipo || "trial"
+      if (plan !== "pro" && plan !== "manual") {
+        return res.status(403).json({ error: "Tu plan actual solo permite 1 taller. Actualiza al plan Pro para agregar más." })
+      }
+    }
+
     const taller = await prisma.taller.create({
       data: {
         nombre: nombre.trim(),
