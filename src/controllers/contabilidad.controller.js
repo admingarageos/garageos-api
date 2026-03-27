@@ -53,7 +53,14 @@ export const getResumen = async (req, res) => {
           metodoPago: { not: null },
           fecha: { gte: inicio, lte: fin }
         },
-        select: { total: true }
+        select: {
+          id: true,
+          total: true,
+          fecha: true,
+          metodoPago: true,
+          vehiculo: { select: { placas: true, marca: true, modelo: true } }
+        },
+        orderBy: { fecha: "desc" }
       }),
 
       // Gastos del período
@@ -94,6 +101,7 @@ export const getResumen = async (req, res) => {
       utilidad,
       margen:        ingresos > 0 ? ((utilidad / ingresos) * 100).toFixed(1) : "0.0",
       porCategoria,
+      ordenesCobradas: ordenesPagadas,
       cuentasPorCobrar: {
         total:   totalXCobrar,
         ordenes: cuentasPorCobrar
