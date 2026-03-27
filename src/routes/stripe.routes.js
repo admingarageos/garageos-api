@@ -1,8 +1,9 @@
 import { Router } from "express"
-import { createCheckoutSession } from "../controllers/stripe.controller.js"
+import { createCheckoutSession, createPortalSession } from "../controllers/stripe.controller.js"
 
 const router = Router()
 
 router.post("/checkout", createCheckoutSession)
+router.post("/portal",   createPortalSession)
 
 export default router

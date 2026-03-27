@@ -120,3 +120,30 @@ export async function handleWebhook(req, res) {
 
   res.json({ received: true })
 }
+
+/* ================================================
+   POST /api/stripe/portal
+   Crea una Billing Portal Session para que el cliente
+   gestione su suscripción (upgrade, downgrade, cancelar)
+================================================ */
+export async function createPortalSession(req, res) {
+  try {
+    const taller = await prisma.taller.findUnique({ where: { id: req.tallerId } })
+
+    if (!taller?.stripeCustomerId) {
+      return res.status(400).json({ error: "Este taller no tiene una suscripción activa de Stripe" })
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173"
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   taller.stripeCustomerId,
+      return_url: `${frontendUrl}/configuracion`,
+    })
+
+    res.json({ url: session.url })
+  } catch (error) {
+    console.error("[createPortalSession]", error)
+    res.status(500).json({ error: "Error creando sesión del portal" })
+  }
+}
