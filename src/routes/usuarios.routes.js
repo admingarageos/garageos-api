@@ -43,28 +43,28 @@ router.get("/", async (req, res) => {
    HELPER — límite de mecánicos por plan
 ========================= */
 
-const LIMITE_MECANICOS = {
-  trial:    1,
-  basico:   1,
-  estandar: 5,
-  pro:      Infinity,
-  manual:   Infinity,
+const LIMITES_PLAN = {
+  trial:    { admin: 1, mecanico: 1 },
+  basico:   { admin: 1, mecanico: 1 },
+  estandar: { admin: 1, mecanico: 5 },
+  pro:      { admin: Infinity, mecanico: Infinity },
+  manual:   { admin: Infinity, mecanico: Infinity },
 }
 
-async function verificarLimiteMecanicos(tallerId) {
+const PLAN_LABELS = { trial: "Trial", basico: "Básico", estandar: "Estándar" }
+
+async function verificarLimiteRol(tallerId, rol) {
   const taller = await prisma.taller.findUnique({ where: { id: tallerId } })
   const plan   = taller?.planTipo || "trial"
-  const limite = LIMITE_MECANICOS[plan] ?? 1
+  const limite = (LIMITES_PLAN[plan] ?? LIMITES_PLAN.trial)[rol]
 
-  if (limite === Infinity) return null // sin límite
+  if (!limite || limite === Infinity) return null
 
-  const mecanicos = await prisma.userTaller.count({
-    where: { tallerId, rol: "mecanico" }
-  })
+  const count = await prisma.userTaller.count({ where: { tallerId, rol } })
 
-  if (mecanicos >= limite) {
-    const labels = { trial: "Trial", basico: "Básico", estandar: "Estándar" }
-    return `Tu plan ${labels[plan] || plan} permite máximo ${limite} mecánico${limite > 1 ? "s" : ""}. Actualiza tu plan para agregar más.`
+  if (count >= limite) {
+    const rolLabel = rol === "admin" ? "administrador" : `mecánico${limite > 1 ? "s" : ""}`
+    return `Tu plan ${PLAN_LABELS[plan] || plan} permite máximo ${limite} ${rolLabel}. Actualiza tu plan para agregar más.`
   }
 
   return null
@@ -86,10 +86,9 @@ router.post("/", async (req, res) => {
       })
     }
 
-    if ((rol || "mecanico") === "mecanico") {
-      const limiteError = await verificarLimiteMecanicos(tallerId)
-      if (limiteError) return res.status(403).json({ error: limiteError })
-    }
+    const rolFinal = rol || "mecanico"
+    const limiteError = await verificarLimiteRol(tallerId, rolFinal)
+    if (limiteError) return res.status(403).json({ error: limiteError })
 
     const existing = await prisma.user.findUnique({ where: { email } })
 
@@ -107,7 +106,7 @@ router.post("/", async (req, res) => {
       data: {
         userId: newUser.id,
         tallerId,
-        rol: rol || "mecanico"
+        rol: rolFinal
       }
     })
 
@@ -115,7 +114,7 @@ router.post("/", async (req, res) => {
       id: newUser.id,
       nombre: newUser.nombre,
       email: newUser.email,
-      rol: rol || "mecanico"
+      rol: rolFinal
     })
 
   } catch (error) {
@@ -138,10 +137,9 @@ router.post("/invitar", async (req, res) => {
       return res.status(400).json({ error: "Email requerido" })
     }
 
-    if ((rol || "mecanico") === "mecanico") {
-      const limiteError = await verificarLimiteMecanicos(tallerId)
-      if (limiteError) return res.status(403).json({ error: limiteError })
-    }
+    const rolFinalInvitar = rol || "mecanico"
+    const limiteErrorInvitar = await verificarLimiteRol(tallerId, rolFinalInvitar)
+    if (limiteErrorInvitar) return res.status(403).json({ error: limiteErrorInvitar })
 
     const user = await prisma.user.findUnique({ where: { email } })
 
