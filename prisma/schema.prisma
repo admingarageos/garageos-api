@@ -50,6 +50,7 @@ model Taller {
   usuarios          UserTaller[]
   citas             Cita[]
   pushSubscriptions PushSubscription[]
+  invitaciones      Invitacion[]
 }
 
 model PlatformConfig {
@@ -176,6 +177,7 @@ model User {
   talleres          UserTaller[]
   comentarios       OrdenComentario[]
   pushSubscriptions PushSubscription[]
+  invitaciones      Invitacion[]
 }
 
 model OrdenComentario {
@@ -253,4 +255,22 @@ model PushSubscription {
   @@unique([endpoint, tallerId])
   @@index([tallerId])
   @@index([userId])
+}
+
+model Invitacion {
+  id        Int        @id @default(autoincrement())
+  token     String     @unique
+  rol       RolTaller  @default(mecanico)
+  expiresAt DateTime
+  usadaAt   DateTime?
+  createdAt DateTime   @default(now())
+
+  tallerId  Int
+  taller    Taller @relation(fields: [tallerId], references: [id])
+
+  creadoPor Int
+  creador   User   @relation(fields: [creadoPor], references: [id])
+
+  @@index([tallerId])
+  @@index([token])
 }

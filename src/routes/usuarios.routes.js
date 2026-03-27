@@ -1,6 +1,7 @@
 import { Router } from "express"
 import prisma from "../lib/prisma.js"
 import bcrypt from "bcrypt"
+import { crearInvitacion } from "../controllers/invitaciones.controller.js"
 
 const router = Router()
 
@@ -241,6 +242,12 @@ router.patch("/:userId/rol", async (req, res) => {
     res.status(500).json({ error: "Error actualizando rol" })
   }
 })
+
+/* =========================
+   GENERAR LINK DE INVITACIÓN
+========================= */
+
+router.post("/invitacion", crearInvitacion)
 
 /* =========================
    ELIMINAR USUARIO DEL TALLER

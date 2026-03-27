@@ -23,6 +23,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 import authRoutes from "./auth/auth.routes.js"
+import invitacionesRoutes from "./routes/invitaciones.routes.js"
 import stripeRoutes from "./routes/stripe.routes.js"
 import { handleWebhook } from "./controllers/stripe.controller.js"
 import usuariosRoutes from "./routes/usuarios.routes.js"
@@ -113,6 +114,9 @@ app.get("/", (req, res) => {
 })
 
 app.use("/api/auth", authLimiter, authRoutes)
+
+// Rutas públicas de invitaciones (validar y aceptar no requieren auth)
+app.use("/api/invitaciones", authLimiter, invitacionesRoutes)
 
 /* =========================
    RUTAS PROTEGIDAS (auth)
