@@ -4,12 +4,12 @@ import prisma from "../lib/prisma.js"
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const PRICE_IDS = {
-  basico_mensual:   "price_1TFNqECALNB3M7LvRb8cWl3f",
-  basico_anual:     "price_1TFNqeCALNB3M7LvXs49GNIS",
-  estandar_mensual: "price_1TFNr7CALNB3M7Lvg3z6whN9",
-  estandar_anual:   "price_1TFNrRCALNB3M7Lvyd1Ox869",
-  pro_mensual:      "price_1TFNrzCALNB3M7LvDloS55PX",
-  pro_anual:        "price_1TFNsDCALNB3M7LvgfYJajyO",
+  basico_mensual:   "price_1TFaFUFyzdWdxBmp4Vi7JPoo",
+  basico_anual:     "price_1TFaFRFyzdWdxBmpBDcdGf48",
+  estandar_mensual: "price_1TFaFPFyzdWdxBmpW6qKEEvK",
+  estandar_anual:   "price_1TFaFOFyzdWdxBmpP5tRfDjM",
+  pro_mensual:      "price_1TFaFMFyzdWdxBmpS5FPN38x",
+  pro_anual:        "price_1TFaFJFyzdWdxBmpb4OCP9ga",
 }
 
 const PLAN_POR_PRICE = Object.fromEntries(
